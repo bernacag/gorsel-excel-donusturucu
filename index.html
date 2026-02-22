@@ -7,8 +7,9 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,109 +24,89 @@
       --text:        #111827;
       --muted:       #6b7280;
       --row-even:    #f0f7ee;
-      --shadow:      0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.07);
+      --shadow:      0 1px 3px rgba(0,0,0,.12);
       --shadow-lg:   0 8px 24px rgba(0,0,0,.12);
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
+      background: var(--bg); color: var(--text); min-height: 100vh;
     }
 
-    /* ── Header ─────────────────────────────────────────── */
+    /* ── Header ──────────────────────────────────────────── */
     header {
       background: linear-gradient(135deg, var(--green-dark), var(--green));
-      color: #fff;
-      padding: 1.4rem 2rem;
+      color: #fff; padding: 1.4rem 2rem;
       box-shadow: var(--shadow-lg);
       display: flex; align-items: center; gap: 1rem;
     }
     header .logo { font-size: 2rem; }
-    header h1   { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
-    header p    { font-size: .82rem; opacity: .8; margin-top: .15rem; }
+    header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+    header p  { font-size: .82rem; opacity: .8; margin-top: .15rem; }
 
-    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
 
-    /* ── Upload area ─────────────────────────────────────── */
+    /* ── Upload ──────────────────────────────────────────── */
     .upload-area {
-      background: var(--card);
-      border: 2.5px dashed var(--border);
-      border-radius: 14px;
-      padding: 3rem 2rem;
-      text-align: center;
-      transition: border-color .2s, background .2s;
-      box-shadow: var(--shadow);
+      background: var(--card); border: 2.5px dashed var(--border);
+      border-radius: 14px; padding: 3rem 2rem; text-align: center;
+      transition: border-color .2s, background .2s; box-shadow: var(--shadow);
     }
     .upload-area.drag-over { border-color: var(--green); background: var(--green-light); }
-
     .upload-icon { font-size: 3rem; margin-bottom: .75rem; }
     .upload-area h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: .35rem; }
     .upload-area > p { color: var(--muted); font-size: .875rem; margin-bottom: 1.25rem; }
 
-    /* format badges */
     .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; margin-bottom: 1.5rem; }
-    .badge {
-      border-radius: 100px; padding: .18rem .65rem;
-      font-size: .75rem; font-weight: 700;
-    }
-    .badge-green { background: var(--green-light); color: var(--green-dark); border: 1px solid #b7dfca; }
-    .badge-blue  { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-    .badge-orange{ background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .badge { border-radius: 100px; padding: .18rem .65rem; font-size: .75rem; font-weight: 700; }
+    .badge-green  { background: var(--green-light); color: var(--green-dark); border: 1px solid #b7dfca; }
+    .badge-blue   { background: #dbeafe; color: #1e40af;  border: 1px solid #bfdbfe; }
+    .badge-orange { background: #fff7ed; color: #9a3412;  border: 1px solid #fed7aa; }
 
-    /* upload buttons */
     .upload-btns { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
 
     /* ── Buttons ─────────────────────────────────────────── */
     .btn {
       display: inline-flex; align-items: center; gap: .45rem;
       padding: .6rem 1.2rem; border: none; border-radius: 8px;
-      font-size: .875rem; font-weight: 600; cursor: pointer;
-      transition: all .15s ease;
+      font-size: .875rem; font-weight: 600; cursor: pointer; transition: all .15s ease;
     }
-    .btn-green   { background: var(--green); color: #fff; }
-    .btn-green:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(33,115,70,.35); }
-    .btn-blue    { background: #2563eb; color: #fff; }
-    .btn-blue:hover  { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.35); }
-    .btn-export  { background: #1d6f42; color: #fff; }
+    .btn-green  { background: var(--green); color: #fff; }
+    .btn-green:hover  { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(33,115,70,.35); }
+    .btn-blue   { background: #2563eb; color: #fff; }
+    .btn-blue:hover   { background: #1d4ed8; transform: translateY(-1px); }
+    .btn-export { background: #1d6f42; color: #fff; }
     .btn-export:hover { background: #155433; transform: translateY(-1px); }
-    .btn-ghost   { background: #fff; color: var(--text); border: 1px solid var(--border); }
-    .btn-ghost:hover { background: var(--bg); }
+    .btn-ghost  { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover  { background: var(--bg); }
 
-    /* ── Progress ─────────────────────────────────────────── */
+    /* ── OCR notice ──────────────────────────────────────── */
+    .ocr-notice {
+      background: #fefce8; border: 1px solid #fde68a;
+      border-radius: 8px; padding: .6rem 1rem;
+      font-size: .82rem; color: #92400e; margin-top: .75rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+
+    /* ── Progress ────────────────────────────────────────── */
     .progress-card {
       background: var(--card); border-radius: 14px;
       padding: 2.5rem 2rem; text-align: center; box-shadow: var(--shadow);
     }
     .progress-card h2 { font-size: 1.05rem; font-weight: 600; margin: .75rem 0 .5rem; }
-    .progress-track {
-      background: #e5e7eb; border-radius: 100px;
-      height: 9px; overflow: hidden; margin: .75rem 0;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--green), #4ade80);
-      border-radius: 100px; width: 0%; transition: width .3s ease;
-    }
-    .progress-msg { font-size: .82rem; color: var(--muted); }
+    .progress-track { background: #e5e7eb; border-radius: 100px; height: 9px; overflow: hidden; margin: .75rem 0; }
+    .progress-fill  { height: 100%; background: linear-gradient(90deg, var(--green), #4ade80); border-radius: 100px; width: 0%; transition: width .3s ease; }
+    .progress-msg   { font-size: .82rem; color: var(--muted); }
+    .progress-sub   { font-size: .78rem; color: #9ca3af; margin-top: .3rem; }
 
-    /* ── Result card ─────────────────────────────────────── */
+    /* ── Result ──────────────────────────────────────────── */
     .result-card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
     .result-topbar {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
       padding: 1rem 1.5rem; background: var(--bg); border-bottom: 1px solid var(--border);
-      gap: 1rem; flex-wrap: wrap;
     }
-    .result-topbar h2 {
-      font-size: .95rem; font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px;
-    }
-    .stat-badge {
-      background: var(--green-light); color: var(--green-dark);
-      border-radius: 100px; padding: .18rem .6rem;
-      font-size: .78rem; font-weight: 700; margin-right: .4rem;
-    }
+    .result-topbar h2 { font-size: .95rem; font-weight: 600; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stat-badge { background: var(--green-light); color: var(--green-dark); border-radius: 100px; padding: .18rem .6rem; font-size: .78rem; font-weight: 700; margin-right: .4rem; }
     .actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 
     /* ── Table ───────────────────────────────────────────── */
@@ -135,62 +116,47 @@
     table.xl thead { position: sticky; top: 0; z-index: 10; }
 
     table.xl th.rn, table.xl td.rn {
-      width: 46px; min-width: 46px; background: #e9ecef; color: var(--muted);
+      width: 42px; min-width: 42px; background: #e9ecef; color: var(--muted);
       text-align: center; font-size: .78rem; border: 1px solid var(--border); padding: .5rem .25rem;
     }
-    table.xl thead th.col-img,
-    table.xl thead th.col-txt {
+    table.xl thead th {
       background: var(--green); color: #fff; text-align: center;
-      padding: .8rem 1rem; font-size: .88rem; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
-      border: 1px solid rgba(255,255,255,.2);
+      padding: .75rem 1rem; font-size: .85rem; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase; border: 1px solid rgba(255,255,255,.2);
+      white-space: nowrap;
     }
-    table.xl thead th.col-img { width: 310px; min-width: 260px; }
-    table.xl thead th.col-txt { min-width: 300px; }
+    table.xl thead th.col-img { width: 280px; min-width: 240px; }
+    table.xl thead th.col-txt { min-width: 180px; }
 
     table.xl tbody tr:nth-child(even) { background: var(--row-even); }
-    table.xl tbody tr:hover           { background: #dbeafe; }
+    table.xl tbody tr:hover { background: #dbeafe; }
     table.xl td { vertical-align: top; border: 1px solid var(--border); padding: .7rem .9rem; }
     table.xl td.col-img { text-align: center; }
 
-    .thumb {
-      max-width: 270px; max-height: 190px; object-fit: contain;
-      border-radius: 4px; cursor: zoom-in; transition: transform .2s;
-    }
+    .thumb { max-width: 240px; max-height: 180px; object-fit: contain; border-radius: 4px; cursor: zoom-in; transition: transform .2s; }
     .thumb:hover { transform: scale(1.04); }
-
-    .img-label { font-size: .7rem; color: var(--muted); margin-top: .35rem; word-break: break-all; }
-    .no-img    { color: #9ca3af; font-style: italic; font-size: .82rem; padding: 1rem 0; }
+    .img-label  { font-size: .7rem; color: var(--muted); margin-top: .35rem; word-break: break-all; }
+    .no-img     { color: #9ca3af; font-style: italic; font-size: .82rem; padding: 1rem 0; }
 
     .cell-text {
       white-space: pre-wrap; line-height: 1.7; outline: none;
-      min-height: 3rem; padding: 2px;
+      min-height: 2.5rem; padding: 2px; width: 100%;
     }
     .cell-text:focus { background: #fefce8; border-radius: 4px; }
 
-    /* ── Lightbox ─────────────────────────────────────────── */
-    .lb-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.88); z-index: 9999;
-      align-items: center; justify-content: center;
-    }
+    /* ── Lightbox ────────────────────────────────────────── */
+    .lb-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 9999; align-items: center; justify-content: center; }
     .lb-overlay.open { display: flex; }
-    .lb-overlay img  { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 6px; }
-    .lb-close {
-      position: absolute; top: 1rem; right: 1.2rem;
-      background: #fff; border: none; border-radius: 50%;
-      width: 38px; height: 38px; font-size: 1.1rem;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-    }
+    .lb-overlay img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 6px; }
+    .lb-close { position: absolute; top: 1rem; right: 1.2rem; background: #fff; border: none; border-radius: 50%; width: 38px; height: 38px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
     .hidden { display: none !important; }
-    .mt { margin-top: 1.25rem; }
+    .mt     { margin-top: 1.25rem; }
 
     @media (max-width: 640px) {
       .container { padding: 1rem; }
-      table.xl thead th.col-img { width: 160px; min-width: 130px; }
-      .thumb { max-width: 140px; max-height: 120px; }
-      .result-topbar h2 { max-width: 180px; }
+      table.xl thead th.col-img { width: 150px; min-width: 130px; }
+      .thumb { max-width: 130px; max-height: 110px; }
     }
   </style>
 </head>
@@ -200,7 +166,7 @@
   <div class="logo">📊</div>
   <div>
     <h1>Görsel &amp; İçerik Excel Dönüştürücü</h1>
-    <p>PDF · DOCX · PNG/JPG · Klasör · ZIP — her türlü dosyadan otomatik eşleştirme</p>
+    <p>Görseli Excel'e göm · OCR ile yazıları ayrı sütunlara aktar</p>
   </div>
 </header>
 
@@ -209,34 +175,27 @@
   <!-- Upload -->
   <div id="uploadSection" class="upload-area"
        ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
-
     <div class="upload-icon">📂</div>
     <h2>Dosya, klasör veya ZIP'i buraya sürükleyin</h2>
-    <p>ya da aşağıdan seçin — birden fazla görsel aynı anda yüklenebilir</p>
-
+    <p>Görsellerdeki yazılar OCR ile okunur ve her biri ayrı sütuna yerleştirilir</p>
     <div class="formats">
-      <span class="badge badge-green">PDF</span>
-      <span class="badge badge-green">DOCX</span>
       <span class="badge badge-blue">PNG</span>
       <span class="badge badge-blue">JPG</span>
       <span class="badge badge-blue">WEBP</span>
-      <span class="badge badge-blue">GIF</span>
+      <span class="badge badge-green">PDF</span>
+      <span class="badge badge-green">DOCX</span>
       <span class="badge badge-orange">ZIP</span>
       <span class="badge badge-orange">Klasör</span>
     </div>
-
     <div class="upload-btns">
       <button class="btn btn-green" onclick="fileInput.click()">📄 Dosya / Görsel Seç</button>
       <button class="btn btn-blue"  onclick="folderInput.click()">📁 Klasör Seç</button>
     </div>
-
-    <!-- accepts files + multiple images + ZIP -->
-    <input type="file" id="fileInput" multiple
-           accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip"
-           style="display:none" onchange="handleFiles(this.files)" />
-    <!-- folder picker -->
-    <input type="file" id="folderInput" multiple webkitdirectory
-           style="display:none" onchange="handleFiles(this.files)" />
+    <div class="ocr-notice">
+      ⚡ İlk OCR işleminde dil paketi (~4 MB) indirilir — internet bağlantısı gerekir. Sonraki kullanımlarda anlık çalışır.
+    </div>
+    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip" style="display:none" onchange="handleFiles(this.files)" />
+    <input type="file" id="folderInput" multiple webkitdirectory style="display:none" onchange="handleFiles(this.files)" />
   </div>
 
   <!-- Progress -->
@@ -245,6 +204,7 @@
     <h2>İşleniyor…</h2>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     <p class="progress-msg" id="progressMsg">Lütfen bekleyin…</p>
+    <p class="progress-sub" id="progressSub"></p>
   </div>
 
   <!-- Result -->
@@ -254,22 +214,20 @@
         <h2 id="resultFilename">—</h2>
         <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;font-size:.8rem;color:var(--muted)">
           <span class="stat-badge" id="statCount">0</span> kayıt &nbsp;·&nbsp;
-          İçerik hücrelerine tıklayarak düzenleme yapabilirsiniz
+          Hücrelere tıklayarak düzenleme yapabilirsiniz
         </div>
       </div>
       <div class="actions">
-        <button class="btn btn-export" onclick="exportExcel()">📥 Excel'e Aktar</button>
+        <button class="btn btn-export" onclick="exportExcel()">📥 Excel'e Aktar (Görselli)</button>
         <button class="btn btn-ghost"  onclick="resetApp()">🔄 Yeni Dosya</button>
       </div>
     </div>
-
     <div class="table-scroll">
-      <table class="xl">
-        <thead>
+      <table class="xl" id="xlTable">
+        <thead id="xlHead">
           <tr>
             <th class="rn">#</th>
             <th class="col-img">Görseller</th>
-            <th class="col-txt">İçerikler</th>
           </tr>
         </thead>
         <tbody id="xlBody"></tbody>
@@ -286,67 +244,74 @@
 </div>
 
 <script>
-// ── Constants ────────────────────────────────────────────────────────
+// ── Setup ─────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 const IMAGE_EXTS = ['jpg','jpeg','png','webp','gif','bmp','tiff','avif'];
 const TEXT_EXTS  = ['txt'];
 
-let tableData   = [];
+let tableData   = [];   // [{index, label, imgSrc, textLines:[]}]
 let currentName = 'tablo';
+let tessWorker  = null;
 
-// ── Helpers ──────────────────────────────────────────────────────────
-const getExt = name => name.split('.').pop().toLowerCase();
-
-const MIME_MAP = {
-  jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
-  webp:'image/webp', gif:'image/gif', bmp:'image/bmp',
-  tiff:'image/tiff', avif:'image/avif'
-};
-const getMime = ext => MIME_MAP[ext] || 'image/jpeg';
-
-function fileToDataURL(file) {
-  return new Promise(resolve => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.readAsDataURL(file);
-  });
+// ── Tesseract worker ──────────────────────────────────────────────────
+async function getTess() {
+  if (tessWorker) return tessWorker;
+  setProgress(3, 'OCR motoru yükleniyor…', 'İlk seferde dil paketi indiriliyor (~4 MB)');
+  tessWorker = await Tesseract.createWorker('tur+eng', 1, { logger: () => {} });
+  return tessWorker;
 }
 
-// ── Drag & Drop ──────────────────────────────────────────────────────
+async function ocrImg(imgSrc) {
+  const w = await getTess();
+  const { data } = await w.recognize(imgSrc);
+  return (data.lines || [])
+    .map(l => l.text.replace(/\r?\n/g, ' ').trim())
+    .filter(l => l.length > 1);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+const getExt   = name => name.split('.').pop().toLowerCase();
+const MIME_MAP = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
+                   webp:'image/webp', gif:'image/gif', bmp:'image/bmp' };
+const getMime  = ext => MIME_MAP[ext] || 'image/jpeg';
+
+function fileToDataURL(file) {
+  return new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
+}
+
+function splitText(text) {
+  return text.split(/\n+/).map(l => l.trim()).filter(l => l.length > 1);
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────
 function onDragOver(e)  { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
 function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
 async function onDrop(e) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
-
   const items = Array.from(e.dataTransfer.items || []);
   const files = Array.from(e.dataTransfer.files || []);
-
-  // Check for dropped folder via DataTransferItem API
   if (items.length && items[0].webkitGetAsEntry) {
     const entries = items.map(i => i.webkitGetAsEntry()).filter(Boolean);
-    const hasDir  = entries.some(en => en.isDirectory);
-    if (hasDir) {
-      const allFiles = [];
-      for (const en of entries) await readEntry(en, allFiles);
-      return route(allFiles, 'Klasör');
+    if (entries.some(en => en && en.isDirectory)) {
+      const all = [];
+      for (const en of entries) await readEntry(en, all);
+      return route(all, 'Klasör', 'images');
     }
   }
-
   if (files.length) handleFiles(files);
 }
 
-// Recursively read a FileSystemEntry
 async function readEntry(entry, out) {
+  if (!entry) return;
   if (entry.isFile) {
     const f = await new Promise(res => entry.file(res));
     out.push(f);
   } else if (entry.isDirectory) {
     const reader = entry.createReader();
-    // readEntries may return results in batches — loop until empty
     let batch;
     do {
       batch = await new Promise(res => reader.readEntries(res));
@@ -355,12 +320,10 @@ async function readEntry(entry, out) {
   }
 }
 
-// ── Entry routing ────────────────────────────────────────────────────
+// ── Routing ───────────────────────────────────────────────────────────
 function handleFiles(fileList) {
   const files = Array.from(fileList);
   if (!files.length) return;
-
-  // Single recognised document / ZIP
   if (files.length === 1) {
     const ext = getExt(files[0].name);
     if (ext === 'pdf')                    return route(files, files[0].name, 'pdf');
@@ -368,24 +331,22 @@ function handleFiles(fileList) {
     if (ext === 'zip')                   return route(files, files[0].name, 'zip');
     if (IMAGE_EXTS.includes(ext))        return route(files, files[0].name, 'images');
   }
-
-  // Multiple files → treat as image set (+ optional .txt sidecars)
   route(files, `${files.length} dosya`, 'images');
 }
 
 async function route(files, label, type) {
   currentName = (typeof label === 'string' ? label : 'tablo').replace(/\.[^.]+$/, '');
   showProgress();
-  setProgress(0, 'Başlatılıyor…');
+  setProgress(0, 'Başlatılıyor…', '');
   try {
     let rows = [];
-    if      (type === 'pdf')    rows = await processPDF(files[0]);
-    else if (type === 'docx')   rows = await processDOCX(files[0]);
-    else if (type === 'zip')    rows = await processZIP(files[0]);
-    else                        rows = await processImages(files);
+    if      (type === 'pdf')  rows = await processPDF(files[0]);
+    else if (type === 'docx') rows = await processDOCX(files[0]);
+    else if (type === 'zip')  rows = await processZIP(files[0]);
+    else                      rows = await processImages(files);
 
     if (!rows.length) {
-      alert('Görsel veya içerik bulunamadı.\nDosyaları kontrol edin.');
+      alert('Görsel veya içerik bulunamadı. Dosyaları kontrol edin.');
       resetProgress(); return;
     }
     tableData = rows;
@@ -393,62 +354,53 @@ async function route(files, label, type) {
     showResult(label, rows.length);
   } catch (err) {
     console.error(err);
-    alert('Hata: ' + err.message);
+    alert('Hata:\n' + err.message);
     resetProgress();
   }
 }
 
-// ── PDF ──────────────────────────────────────────────────────────────
+// ── PDF ───────────────────────────────────────────────────────────────
 async function processPDF(file) {
   const buf = await file.arrayBuffer();
-  setProgress(8, 'PDF yükleniyor…');
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  setProgress(5, 'PDF yükleniyor…', '');
+  const pdf  = await pdfjsLib.getDocument({ data: buf }).promise;
   const rows = [];
-
   for (let i = 1; i <= pdf.numPages; i++) {
-    setProgress(8 + Math.round(i / pdf.numPages * 84), `Sayfa ${i}/${pdf.numPages}…`);
+    setProgress(5 + Math.round(i / pdf.numPages * 88), `Sayfa ${i}/${pdf.numPages} işleniyor…`, '');
     const page     = await pdf.getPage(i);
     const viewport = page.getViewport({ scale: 1.6 });
     const canvas   = document.createElement('canvas');
-    canvas.width   = viewport.width;
-    canvas.height  = viewport.height;
+    canvas.width   = viewport.width; canvas.height = viewport.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-    const tc   = await page.getTextContent();
-    const text = tc.items.map(t => t.str).join(' ').replace(/\s+/g, ' ').trim();
-
-    rows.push({ index: i, label: `Sayfa ${i}`, imgSrc: canvas.toDataURL('image/jpeg', .88),
-                content: text || '(Bu sayfada metin yok)' });
+    const tc       = await page.getTextContent();
+    const text     = tc.items.map(t => t.str).join('\n').trim();
+    rows.push({ index: i, label: `Sayfa ${i}`, imgSrc: canvas.toDataURL('image/jpeg', .88), textLines: splitText(text) });
   }
-  setProgress(100, 'Tamamlandı!');
+  setProgress(100, 'Tamamlandı!', '');
   return rows;
 }
 
-// ── DOCX ─────────────────────────────────────────────────────────────
+// ── DOCX ──────────────────────────────────────────────────────────────
 async function processDOCX(file) {
   const buf = await file.arrayBuffer();
-  setProgress(10, 'Word dosyası okunuyor…');
-
+  setProgress(10, 'Word dosyası okunuyor…', '');
   const result = await mammoth.convertToHtml({ arrayBuffer: buf }, {
     convertImage: mammoth.images.imgElement(img =>
-      img.read('base64').then(b64 => ({ src: 'data:' + img.contentType + ';base64,' + b64 }))
-    )
+      img.read('base64').then(b64 => ({ src: 'data:' + img.contentType + ';base64,' + b64 })))
   });
-
-  setProgress(60, 'Eşleştiriliyor…');
+  setProgress(60, 'Eşleştiriliyor…', '');
   const parser = new DOMParser();
   const doc    = parser.parseFromString(result.value, 'text/html');
   const rows   = [];
-  let curImg   = null, curTexts = [], idx = 0;
+  let curImg = null, curTexts = [], idx = 0;
 
   function flush() {
     if (curImg !== null) {
       rows.push({ index: ++idx, label: `Görsel ${idx}`, imgSrc: curImg,
-                  content: curTexts.join('\n').trim() || '' });
+                  textLines: curTexts.filter(t => t.length > 1) });
       curImg = null; curTexts = [];
     }
   }
-
   for (const el of Array.from(doc.body.children)) {
     const img = el.querySelector('img');
     if (img) { flush(); curImg = img.src; }
@@ -456,31 +408,23 @@ async function processDOCX(file) {
   }
   flush();
 
-  // Fallback: sequential pairing
   if (!rows.length) {
     const imgs  = Array.from(doc.querySelectorAll('img'));
-    const texts = Array.from(doc.querySelectorAll('p,h1,h2,h3,h4,li'))
-                       .map(e => e.textContent.trim()).filter(Boolean);
-    imgs.forEach((img, i) => rows.push({
-      index: i + 1, label: `Görsel ${i+1}`, imgSrc: img.src,
-      content: texts[i] || ''
-    }));
+    const texts = Array.from(doc.querySelectorAll('p,h1,h2,h3,h4,li')).map(e => e.textContent.trim()).filter(Boolean);
+    imgs.forEach((img, i) => rows.push({ index: i+1, label: `Görsel ${i+1}`, imgSrc: img.src, textLines: texts[i] ? [texts[i]] : [] }));
   }
-
-  setProgress(100, 'Tamamlandı!');
+  setProgress(100, 'Tamamlandı!', '');
   return rows;
 }
 
-// ── Image files (PNG/JPG/etc. + optional .txt sidecars) ──────────────
+// ── Image files → OCR ─────────────────────────────────────────────────
 async function processImages(files) {
   const imgFiles = files.filter(f => IMAGE_EXTS.includes(getExt(f.name)));
   const txtFiles = files.filter(f => TEXT_EXTS.includes(getExt(f.name)));
 
-  // Sort images: by webkitRelativePath (folder upload) or by name
-  imgFiles.sort((a, b) =>
-    (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name));
+  imgFiles.sort((a, b) => (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name));
 
-  // Build text sidecar lookup: filename-without-ext → text
+  // Build sidecar .txt lookup
   const textMap = {};
   for (const tf of txtFiles) {
     const key = tf.name.replace(/\.[^.]+$/, '').toLowerCase();
@@ -489,66 +433,92 @@ async function processImages(files) {
 
   const rows = [];
   for (let i = 0; i < imgFiles.length; i++) {
-    setProgress(Math.round((i / imgFiles.length) * 92), `Görsel ${i+1}/${imgFiles.length}…`);
-    const f   = imgFiles[i];
-    const key = f.name.replace(/\.[^.]+$/, '').toLowerCase();
-    const lbl = f.webkitRelativePath || f.name;
-    rows.push({
-      index:   i + 1,
-      label:   lbl,
-      imgSrc:  await fileToDataURL(f),
-      content: textMap[key] || ''
-    });
+    const f    = imgFiles[i];
+    const lbl  = f.webkitRelativePath || f.name;
+    const key  = f.name.replace(/\.[^.]+$/, '').toLowerCase();
+    const pct  = Math.round(((i) / imgFiles.length) * 90);
+    setProgress(pct, `Görsel ${i+1}/${imgFiles.length} OCR işleniyor…`, lbl);
+
+    const imgSrc   = await fileToDataURL(f);
+    let textLines;
+
+    if (textMap[key]) {
+      // Sidecar .txt dosyası varsa OCR'a gerek yok
+      textLines = splitText(textMap[key]);
+    } else {
+      // OCR
+      try { textLines = await ocrImg(imgSrc); }
+      catch(e) { console.warn('OCR failed:', e); textLines = []; }
+    }
+
+    rows.push({ index: i+1, label: lbl, imgSrc, textLines });
   }
-  setProgress(100, 'Tamamlandı!');
+  setProgress(100, 'Tamamlandı!', '');
   return rows;
 }
 
-// ── ZIP ──────────────────────────────────────────────────────────────
+// ── ZIP → OCR ─────────────────────────────────────────────────────────
 async function processZIP(file) {
   const buf = await file.arrayBuffer();
-  setProgress(10, 'ZIP açılıyor…');
+  setProgress(5, 'ZIP açılıyor…', '');
   const zip = await JSZip.loadAsync(buf);
 
   const imgEntries = [], txtEntries = [];
   zip.forEach((path, entry) => {
-    if (entry.dir) return;
+    if (entry.dir || path.startsWith('__MACOSX')) return;
     const ext = getExt(path);
     if (IMAGE_EXTS.includes(ext)) imgEntries.push({ path, entry, ext });
     if (TEXT_EXTS.includes(ext))  txtEntries.push({ path, entry });
   });
-
-  // Ignore macOS __MACOSX junk
-  const cleanImgs = imgEntries.filter(e => !e.path.startsWith('__MACOSX'));
-  cleanImgs.sort((a, b) => a.path.localeCompare(b.path));
+  imgEntries.sort((a, b) => a.path.localeCompare(b.path));
 
   const textMap = {};
   for (const { path, entry } of txtEntries) {
     const fname = path.split('/').pop();
-    const key   = fname.replace(/\.[^.]+$/, '').toLowerCase();
-    textMap[key] = await entry.async('string');
+    textMap[fname.replace(/\.[^.]+$/, '').toLowerCase()] = await entry.async('string');
   }
 
   const rows = [];
-  for (let i = 0; i < cleanImgs.length; i++) {
-    setProgress(15 + Math.round(i / cleanImgs.length * 78), `Görsel ${i+1}/${cleanImgs.length}…`);
-    const { path, entry, ext } = cleanImgs[i];
+  for (let i = 0; i < imgEntries.length; i++) {
+    const { path, entry, ext } = imgEntries[i];
     const fname = path.split('/').pop();
     const key   = fname.replace(/\.[^.]+$/, '').toLowerCase();
-    const b64   = await entry.async('base64');
-    rows.push({
-      index:   i + 1,
-      label:   path,
-      imgSrc:  `data:${getMime(ext)};base64,${b64}`,
-      content: textMap[key] || ''
-    });
+    const pct   = 8 + Math.round((i / imgEntries.length) * 82);
+    setProgress(pct, `Görsel ${i+1}/${imgEntries.length} OCR işleniyor…`, path);
+
+    const b64    = await entry.async('base64');
+    const imgSrc = `data:${getMime(ext)};base64,${b64}`;
+    let textLines;
+
+    if (textMap[key]) {
+      textLines = splitText(textMap[key]);
+    } else {
+      try { textLines = await ocrImg(imgSrc); }
+      catch(e) { console.warn('OCR failed:', e); textLines = []; }
+    }
+
+    rows.push({ index: i+1, label: path, imgSrc, textLines });
   }
-  setProgress(100, 'Tamamlandı!');
+  setProgress(100, 'Tamamlandı!', '');
   return rows;
 }
 
-// ── Table render ─────────────────────────────────────────────────────
+// ── Render table ──────────────────────────────────────────────────────
 function renderTable(rows) {
+  const maxCols = Math.max(0, ...rows.map(r => r.textLines.length));
+
+  // Build header
+  const thead = document.getElementById('xlHead');
+  const headerRow = thead.querySelector('tr');
+  // Clear existing text-col headers
+  while (headerRow.children.length > 2) headerRow.removeChild(headerRow.lastChild);
+  for (let c = 0; c < maxCols; c++) {
+    const th = document.createElement('th');
+    th.className   = 'col-txt';
+    th.textContent = `İçerik ${c + 1}`;
+    headerRow.appendChild(th);
+  }
+
   const tbody = document.getElementById('xlBody');
   tbody.innerHTML = '';
 
@@ -557,68 +527,152 @@ function renderTable(rows) {
 
     // # cell
     const tdRn = document.createElement('td');
-    tdRn.className   = 'rn';
-    tdRn.textContent = row.index;
+    tdRn.className = 'rn'; tdRn.textContent = row.index;
     tr.appendChild(tdRn);
 
     // Image cell
     const tdImg = document.createElement('td');
     tdImg.className = 'col-img';
     if (row.imgSrc) {
-      const img     = document.createElement('img');
-      img.className = 'thumb';
-      img.src       = row.imgSrc;
-      img.alt       = row.label;
-      img.title     = 'Büyütmek için tıklayın';
+      const img = document.createElement('img');
+      img.className = 'thumb'; img.src = row.imgSrc; img.alt = row.label; img.title = 'Büyütmek için tıklayın';
       img.addEventListener('click', () => openLb(row.imgSrc));
       tdImg.appendChild(img);
-      const lbl     = document.createElement('div');
-      lbl.className   = 'img-label';
-      lbl.textContent = row.label;
+      const lbl = document.createElement('div');
+      lbl.className = 'img-label'; lbl.textContent = row.label;
       tdImg.appendChild(lbl);
     } else {
       const nv = document.createElement('div');
-      nv.className   = 'no-img';
-      nv.textContent = 'Görsel yok';
+      nv.className = 'no-img'; nv.textContent = 'Görsel yok';
       tdImg.appendChild(nv);
     }
     tr.appendChild(tdImg);
 
-    // Content cell (editable)
-    const tdTxt = document.createElement('td');
-    tdTxt.className = 'col-txt';
-    const div = document.createElement('div');
-    div.className       = 'cell-text';
-    div.contentEditable = 'true';
-    div.textContent     = row.content;
-    div.addEventListener('blur', () => { tableData[ri].content = div.textContent.trim(); });
-    tdTxt.appendChild(div);
-    tr.appendChild(tdTxt);
+    // Text columns
+    for (let c = 0; c < maxCols; c++) {
+      const td  = document.createElement('td');
+      td.className = 'col-txt';
+      const div = document.createElement('div');
+      div.className = 'cell-text';
+      div.contentEditable = 'true';
+      div.textContent = row.textLines[c] || '';
+      div.addEventListener('blur', () => {
+        if (!tableData[ri].textLines) tableData[ri].textLines = [];
+        tableData[ri].textLines[c] = div.textContent.trim();
+      });
+      td.appendChild(div);
+      tr.appendChild(td);
+    }
 
     tbody.appendChild(tr);
   });
 }
 
-// ── Excel export ─────────────────────────────────────────────────────
-function exportExcel() {
-  const wb     = XLSX.utils.book_new();
-  const wsData = [['#', 'Görseller', 'İçerikler']];
-  tableData.forEach(r => wsData.push([r.index, r.label, r.content]));
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 5 }, { wch: 45 }, { wch: 90 }];
-  XLSX.utils.book_append_sheet(wb, ws, 'Ürün Tablosu');
-  XLSX.writeFile(wb, currentName + '_tablo.xlsx');
+// ── Excel export (ExcelJS — gerçek görsel gömme) ──────────────────────
+async function exportExcel() {
+  const btn = document.querySelector('.btn-export');
+  btn.disabled = true; btn.textContent = '⏳ Hazırlanıyor…';
+
+  try {
+    const maxCols = Math.max(0, ...tableData.map(r => r.textLines.length));
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator  = 'Görsel Excel Dönüştürücü';
+    wb.created  = new Date();
+
+    const ws = wb.addWorksheet('Ürün Tablosu');
+
+    // Column widths (ExcelJS char units ≈ 7px)
+    ws.getColumn(1).width = 32;  // Görsel ~225px
+    for (let c = 1; c <= maxCols; c++) ws.getColumn(c + 1).width = 28;
+
+    // Header row
+    const hdr = ws.getRow(1);
+    hdr.height = 26;
+    hdr.getCell(1).value = 'Görsel';
+    for (let c = 1; c <= maxCols; c++) hdr.getCell(c + 1).value = `İçerik ${c}`;
+    hdr.eachCell(cell => {
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF217346' } };
+      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border    = { bottom: { style: 'medium', color: { argb: 'FF185C37' } } };
+    });
+
+    const ROW_H_PT   = 100; // ~133px
+    const IMG_W_PX   = 210;
+    const IMG_H_PX   = 125;
+
+    for (let ri = 0; ri < tableData.length; ri++) {
+      const row   = tableData[ri];
+      const wsRow = ws.getRow(ri + 2);
+      wsRow.height = ROW_H_PT;
+
+      // Text cells
+      for (let c = 0; c < maxCols; c++) {
+        const cell  = wsRow.getCell(c + 2);
+        cell.value  = row.textLines[c] || '';
+        cell.alignment = { wrapText: true, vertical: 'middle' };
+        cell.font      = { size: 10 };
+        cell.border    = {
+          top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right:  { style: 'thin', color: { argb: 'FFD1D5DB' } }
+        };
+      }
+
+      // Embed image
+      if (row.imgSrc) {
+        try {
+          const parts  = row.imgSrc.split(';base64,');
+          const mime   = parts[0].replace('data:', '');
+          const base64 = parts[1];
+          const extMap = { 'image/jpeg':'jpeg','image/png':'png','image/gif':'gif','image/webp':'jpeg','image/bmp':'jpeg' };
+          const ext    = extMap[mime] || 'jpeg';
+
+          const imgId = wb.addImage({ base64, extension: ext });
+          ws.addImage(imgId, {
+            tl:     { col: 0, row: ri + 1 },
+            ext:    { width: IMG_W_PX, height: IMG_H_PX },
+            editAs: 'oneCell'
+          });
+
+          // Style the görsel cell border
+          const imgCell = wsRow.getCell(1);
+          imgCell.border = {
+            top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right:  { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+        } catch (imgErr) {
+          console.warn('Görsel eklenemedi:', imgErr);
+          wsRow.getCell(1).value = row.label;
+        }
+      }
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    a.href       = url;
+    a.download   = (currentName || 'tablo') + '_tablo.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error(err);
+    alert('Excel dışa aktarma hatası:\n' + err.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '📥 Excel\'e Aktar (Görselli)';
+  }
 }
 
-// ── Lightbox ─────────────────────────────────────────────────────────
-function openLb(src) {
-  document.getElementById('lbImg').src = src;
-  document.getElementById('lbOverlay').classList.add('open');
-}
-function closeLb() {
-  document.getElementById('lbOverlay').classList.remove('open');
-  document.getElementById('lbImg').src = '';
-}
+// ── Lightbox ──────────────────────────────────────────────────────────
+function openLb(src) { document.getElementById('lbImg').src = src; document.getElementById('lbOverlay').classList.add('open'); }
+function closeLb()   { document.getElementById('lbOverlay').classList.remove('open'); document.getElementById('lbImg').src = ''; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
 
 // ── UI helpers ────────────────────────────────────────────────────────
@@ -637,15 +691,19 @@ function showResult(label, count) {
   document.getElementById('resultFilename').textContent = label;
   document.getElementById('statCount').textContent = count;
 }
-function setProgress(pct, msg) {
+function setProgress(pct, msg, sub) {
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressMsg').textContent  = msg;
+  document.getElementById('progressSub').textContent  = sub || '';
 }
 function resetApp() {
   tableData = [];
-  document.getElementById('xlBody').innerHTML    = '';
-  document.getElementById('fileInput').value     = '';
-  document.getElementById('folderInput').value   = '';
+  // Clear extra header columns
+  const hr = document.querySelector('#xlHead tr');
+  while (hr.children.length > 2) hr.removeChild(hr.lastChild);
+  document.getElementById('xlBody').innerHTML  = '';
+  document.getElementById('fileInput').value   = '';
+  document.getElementById('folderInput').value = '';
   document.getElementById('uploadSection').classList.remove('hidden');
   document.getElementById('resultSection').classList.add('hidden');
   document.getElementById('progressSection').classList.add('hidden');
