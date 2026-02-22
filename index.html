@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Görsel & İçerik Excel Dönüştürücü</title>
+
+  <!-- Libraries (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:       #217346;
+      --green-dark:  #185c37;
+      --green-light: #e7f3ec;
+      --blue:        #2563eb;
+      --blue-light:  #eff6ff;
+      --border:      #d1d5db;
+      --bg:          #f3f4f6;
+      --card:        #ffffff;
+      --text:        #111827;
+      --muted:       #6b7280;
+      --row-even:    #f0f7ee;
+      --shadow:      0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.07);
+      --shadow-lg:   0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── Header ─────────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
+      color: #fff;
+      padding: 1.4rem 2rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo { font-size: 2rem; }
+    header h1   { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+    header p    { font-size: .82rem; opacity: .8; margin-top: .15rem; }
+
+    /* ─── Layout ─────────────────────────────────────────────────────── */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ─── Upload Area ─────────────────────────────────────────────────── */
+    .upload-area {
+      background: var(--card);
+      border: 2.5px dashed var(--border);
+      border-radius: 14px;
+      padding: 3.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      box-shadow: var(--shadow);
+    }
+    .upload-area:hover,
+    .upload-area.drag-over {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+    .upload-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .upload-area h2  { font-size: 1.2rem; font-weight: 600; margin-bottom: .4rem; }
+    .upload-area p   { color: var(--muted); font-size: .875rem; margin-bottom: 1.5rem; }
+    .upload-area .formats {
+      display: inline-flex; gap: .5rem; margin-bottom: 1.5rem;
+    }
+    .format-badge {
+      background: var(--green-light);
+      color: var(--green-dark);
+      border: 1px solid #b7dfca;
+      border-radius: 100px;
+      padding: .2rem .7rem;
+      font-size: .78rem;
+      font-weight: 600;
+    }
+
+    /* ─── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .6rem 1.2rem;
+      border: none; border-radius: 8px;
+      font-size: .875rem; font-weight: 600; cursor: pointer;
+      transition: all .15s ease;
+    }
+    .btn-primary  { background: var(--green); color: #fff; }
+    .btn-primary:hover  { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(33,115,70,.35); }
+    .btn-export   { background: #1d6f42; color: #fff; }
+    .btn-export:hover   { background: #155433; transform: translateY(-1px); }
+    .btn-secondary{ background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover{ background: var(--bg); }
+
+    /* ─── Progress ─────────────────────────────────────────────────────── */
+    .progress-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .progress-card h2 { font-size: 1.05rem; font-weight: 600; margin: .75rem 0 .5rem; }
+    .progress-track {
+      background: #e5e7eb;
+      border-radius: 100px;
+      height: 9px;
+      overflow: hidden;
+      margin: .75rem 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), #4ade80);
+      border-radius: 100px;
+      width: 0%;
+      transition: width .3s ease;
+    }
+    .progress-msg { font-size: .82rem; color: var(--muted); }
+
+    /* ─── Result ─────────────────────────────────────────────────────── */
+    .result-card {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .result-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .result-topbar h2 {
+      font-size: .95rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 400px;
+    }
+    .stat-badge {
+      background: var(--green-light);
+      color: var(--green-dark);
+      border-radius: 100px;
+      padding: .18rem .6rem;
+      font-size: .78rem; font-weight: 700;
+      margin-right: .4rem;
+    }
+    .actions { display: flex; gap: .6rem; }
+
+    /* ─── Excel Table ─────────────────────────────────────────────────── */
+    .table-scroll {
+      overflow: auto;
+      max-height: 72vh;
+    }
+
+    table.xl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .875rem;
+    }
+
+    table.xl thead {
+      position: sticky; top: 0; z-index: 10;
+    }
+
+    /* Row-number column */
+    table.xl th.rn,
+    table.xl td.rn {
+      width: 46px; min-width: 46px;
+      background: #e9ecef;
+      color: var(--muted);
+      text-align: center;
+      font-size: .78rem;
+      border: 1px solid var(--border);
+      padding: .5rem .25rem;
+    }
+
+    /* Section headers (Görseller / İçerikler) */
+    table.xl thead tr th.col-img,
+    table.xl thead tr th.col-txt {
+      background: var(--green);
+      color: #fff;
+      text-align: center;
+      padding: .8rem 1rem;
+      font-size: .88rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,.2);
+    }
+    table.xl thead tr th.col-img { width: 310px; min-width: 260px; }
+    table.xl thead tr th.col-txt { min-width: 300px; }
+
+    /* Body rows */
+    table.xl tbody tr:nth-child(even) { background: var(--row-even); }
+    table.xl tbody tr:hover           { background: #dbeafe; }
+
+    table.xl td {
+      vertical-align: top;
+      border: 1px solid var(--border);
+      padding: .7rem .9rem;
+    }
+    table.xl td.col-img { text-align: center; }
+
+    .thumb {
+      max-width: 270px;
+      max-height: 190px;
+      object-fit: contain;
+      border-radius: 4px;
+      cursor: zoom-in;
+      transition: transform .2s;
+    }
+    .thumb:hover { transform: scale(1.03); }
+
+    .img-label {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: .35rem;
+    }
+
+    .no-img {
+      color: #9ca3af;
+      font-style: italic;
+      font-size: .82rem;
+      padding: 1rem 0;
+    }
+
+    .cell-text {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      outline: none;
+      min-height: 3rem;
+    }
+    .cell-text:focus {
+      background: #fefce8;
+      border-radius: 4px;
+    }
+
+    /* ─── Lightbox ─────────────────────────────────────────────────────── */
+    .lb-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .lb-overlay.open { display: flex; }
+    .lb-overlay img  { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 6px; }
+    .lb-close {
+      position: absolute; top: 1rem; right: 1.2rem;
+      background: #fff; border: none; border-radius: 50%;
+      width: 38px; height: 38px; font-size: 1.1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ─── Helpers ─────────────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .mt { margin-top: 1.25rem; }
+
+    /* ─── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .container { padding: 1rem; }
+      table.xl thead tr th.col-img { width: 160px; min-width: 130px; }
+      .thumb { max-width: 140px; max-height: 120px; }
+      .result-topbar h2 { max-width: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ──────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">📊</div>
+  <div>
+    <h1>Görsel &amp; İçerik Excel Dönüştürücü</h1>
+    <p>PDF veya Word dosyasındaki görselleri ve içerikleri otomatik eşleştirin</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ─── Upload ─────────────────────────────────────────────────────── -->
+  <div id="uploadSection" class="upload-area"
+       onclick="fileInput.click()"
+       ondragover="onDragOver(event)"
+       ondrop="onDrop(event)"
+       ondragleave="onDragLeave(event)">
+    <div class="upload-icon">📂</div>
+    <h2>Dosyanızı buraya sürükleyip bırakın</h2>
+    <p>ya da aşağıdaki düğmeye tıklayarak seçin</p>
+    <div class="formats">
+      <span class="format-badge">PDF</span>
+      <span class="format-badge">DOCX</span>
+      <span class="format-badge">DOC</span>
+    </div>
+    <br/>
+    <button class="btn btn-primary" onclick="event.stopPropagation(); fileInput.click()">
+      📁 Dosya Seç
+    </button>
+    <input type="file" id="fileInput" accept=".pdf,.docx,.doc" style="display:none"
+           onchange="handleFileSelect(event)" />
+  </div>
+
+  <!-- ─── Progress ──────────────────────────────────────────────────── -->
+  <div id="progressSection" class="progress-card mt hidden">
+    <div style="font-size:2.2rem">⚙️</div>
+    <h2 id="progressTitle">Dosya işleniyor…</h2>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <p class="progress-msg" id="progressMsg">Lütfen bekleyin…</p>
+  </div>
+
+  <!-- ─── Result ────────────────────────────────────────────────────── -->
+  <div id="resultSection" class="result-card mt hidden">
+
+    <div class="result-topbar">
+      <div>
+        <h2 id="resultFilename">—</h2>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;font-size:.82rem;color:var(--muted)">
+          <span class="stat-badge" id="statCount">0</span> kayıt eşleştirildi &nbsp;·&nbsp;
+          <span style="font-size:.78rem;color:var(--muted)">
+            İçerik hücrelerine tıklayarak düzenleme yapabilirsiniz
+          </span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-export" onclick="exportExcel()">📥 Excel'e Aktar</button>
+        <button class="btn btn-secondary" onclick="resetApp()">🔄 Yeni Dosya</button>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="xl" id="xlTable">
+        <thead>
+          <tr>
+            <th class="rn">#</th>
+            <th class="col-img">Görseller</th>
+            <th class="col-txt">İçerikler</th>
+          </tr>
+        </thead>
+        <tbody id="xlBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div><!-- /container -->
+
+<!-- ─── Lightbox ──────────────────────────────────────────────────── -->
+<div class="lb-overlay" id="lbOverlay" onclick="closeLb()">
+  <button class="lb-close" onclick="closeLb()">✕</button>
+  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()" />
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────
+//  PDF.js worker
+// ─────────────────────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let tableData      = [];
+let currentName    = 'tablo';
+
+// ─────────────────────────────────────────────────────────────────────
+//  Drag-and-drop helpers
+// ─────────────────────────────────────────────────────────────────────
+function onDragOver(e)  { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+}
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) processFile(f);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Entry point
+// ─────────────────────────────────────────────────────────────────────
+async function processFile(file) {
+  currentName = file.name.replace(/\.[^.]+$/, '');
+  const ext   = file.name.split('.').pop().toLowerCase();
+
+  showProgress();
+  setProgress(0, 'Dosya okunuyor…');
+
+  try {
+    let rows = [];
+    if (ext === 'pdf') {
+      rows = await processPDF(file);
+    } else if (ext === 'docx' || ext === 'doc') {
+      rows = await processDOCX(file);
+    } else {
+      alert('Desteklenmeyen format. Lütfen PDF veya DOCX/DOC yükleyin.');
+      resetProgress();
+      return;
+    }
+
+    if (!rows.length) {
+      alert('Dosyadan görsel veya içerik çıkarılamadı.\nDosyanın metin ve/veya görsel içerdiğini kontrol edin.');
+      resetProgress();
+      return;
+    }
+
+    tableData = rows;
+    renderTable(rows);
+    showResult(file.name, rows.length);
+
+  } catch (err) {
+    console.error(err);
+    alert('İşlem sırasında hata oluştu:\n' + err.message);
+    resetProgress();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  PDF → rows
+//  Her sayfa → 1 satır (sayfa görseli + o sayfadaki metin)
+// ─────────────────────────────────────────────────────────────────────
+async function processPDF(file) {
+  const buf = await file.arrayBuffer();
+  setProgress(8, 'PDF yükleniyor…');
+
+  const pdf  = await pdfjsLib.getDocument({ data: buf }).promise;
+  const rows = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pct = 8 + Math.round((i / pdf.numPages) * 84);
+    setProgress(pct, `Sayfa ${i} / ${pdf.numPages} işleniyor…`);
+
+    const page     = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.6 });
+    const canvas   = document.createElement('canvas');
+    canvas.width   = viewport.width;
+    canvas.height  = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const imgSrc = canvas.toDataURL('image/jpeg', 0.88);
+
+    const tc   = await page.getTextContent();
+    const text = tc.items.map(t => t.str).join(' ').replace(/\s+/g, ' ').trim();
+
+    rows.push({
+      index:   i,
+      label:   `Sayfa ${i}`,
+      imgSrc,
+      content: text || '(Bu sayfada metin bulunamadı)'
+    });
+  }
+
+  setProgress(100, 'Tamamlandı!');
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  DOCX → rows
+//  Mammoth ile HTML'e çevir, görsel + ardından gelen metin eşleştir
+// ─────────────────────────────────────────────────────────────────────
+async function processDOCX(file) {
+  const buf = await file.arrayBuffer();
+  setProgress(10, 'Word dosyası okunuyor…');
+
+  const result = await mammoth.convertToHtml({ arrayBuffer: buf }, {
+    convertImage: mammoth.images.imgElement(function(img) {
+      return img.read('base64').then(function(b64) {
+        return { src: 'data:' + img.contentType + ';base64,' + b64 };
+      });
+    })
+  });
+
+  setProgress(60, 'Görseller ve içerikler eşleştiriliyor…');
+
+  const parser = new DOMParser();
+  const doc    = parser.parseFromString(result.value, 'text/html');
+
+  const rows     = [];
+  let curImg     = null;
+  let curTexts   = [];
+  let idx        = 0;
+
+  // Walk top-level block elements
+  const blocks = Array.from(doc.body.children);
+
+  function flushRow() {
+    if (curImg !== null) {
+      idx++;
+      rows.push({
+        index:   idx,
+        label:   `Görsel ${idx}`,
+        imgSrc:  curImg,
+        content: curTexts.join('\n').trim() || '(İçerik bulunamadı)'
+      });
+      curImg   = null;
+      curTexts = [];
+    }
+  }
+
+  for (const el of blocks) {
+    const img = el.querySelector('img');
+    if (img) {
+      flushRow();
+      curImg = img.src;
+    } else {
+      const t = el.innerText ? el.innerText.trim() : el.textContent.trim();
+      if (t) curTexts.push(t);
+    }
+  }
+  flushRow();
+
+  // Fallback: görsel var ama eşleşme bulunamadıysa sıralı eşleştir
+  if (!rows.length) {
+    const imgs  = Array.from(doc.querySelectorAll('img'));
+    const texts = Array.from(doc.querySelectorAll('p,h1,h2,h3,h4,li'))
+                       .map(el => el.textContent.trim()).filter(Boolean);
+    imgs.forEach((img, i) => {
+      rows.push({
+        index:   i + 1,
+        label:   `Görsel ${i + 1}`,
+        imgSrc:  img.src,
+        content: texts[i] || '(İçerik bulunamadı)'
+      });
+    });
+  }
+
+  setProgress(100, 'Tamamlandı!');
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Table rendering
+// ─────────────────────────────────────────────────────────────────────
+function renderTable(rows) {
+  const tbody = document.getElementById('xlBody');
+  tbody.innerHTML = '';
+
+  rows.forEach((row, ri) => {
+    const tr = document.createElement('tr');
+
+    // Row-number cell
+    const tdRn = document.createElement('td');
+    tdRn.className = 'rn';
+    tdRn.textContent = row.index;
+    tr.appendChild(tdRn);
+
+    // Image cell
+    const tdImg = document.createElement('td');
+    tdImg.className = 'col-img';
+    if (row.imgSrc) {
+      const img       = document.createElement('img');
+      img.className   = 'thumb';
+      img.src         = row.imgSrc;
+      img.alt         = row.label;
+      img.title       = 'Büyütmek için tıklayın';
+      img.addEventListener('click', () => openLb(row.imgSrc));
+      tdImg.appendChild(img);
+      const lbl       = document.createElement('div');
+      lbl.className   = 'img-label';
+      lbl.textContent = row.label;
+      tdImg.appendChild(lbl);
+    } else {
+      const nv = document.createElement('div');
+      nv.className   = 'no-img';
+      nv.textContent = 'Görsel yok';
+      tdImg.appendChild(nv);
+    }
+    tr.appendChild(tdImg);
+
+    // Content cell (editable)
+    const tdTxt = document.createElement('td');
+    tdTxt.className = 'col-txt';
+    const div = document.createElement('div');
+    div.className       = 'cell-text';
+    div.contentEditable = 'true';
+    div.textContent     = row.content;
+    div.addEventListener('blur', () => {
+      tableData[ri].content = div.textContent.trim();
+    });
+    tdTxt.appendChild(div);
+    tr.appendChild(tdTxt);
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Excel export  (SheetJS — metin + görsel etiketi)
+// ─────────────────────────────────────────────────────────────────────
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  const wsData = [['#', 'Görseller', 'İçerikler']];
+  tableData.forEach(row => {
+    wsData.push([row.index, row.label, row.content]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 90 }];
+
+  // Bold header row via cell styles (xlsx basic style via !merges trick)
+  // SheetJS free version does not support rich styles, so we keep it clean.
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Ürün Tablosu');
+  XLSX.writeFile(wb, currentName + '_tablo.xlsx');
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Lightbox
+// ─────────────────────────────────────────────────────────────────────
+function openLb(src) {
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbOverlay').classList.add('open');
+}
+function closeLb() {
+  document.getElementById('lbOverlay').classList.remove('open');
+  document.getElementById('lbImg').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+
+// ─────────────────────────────────────────────────────────────────────
+//  UI state helpers
+// ─────────────────────────────────────────────────────────────────────
+function showProgress() {
+  document.getElementById('uploadSection').classList.add('hidden');
+  document.getElementById('progressSection').classList.remove('hidden');
+  document.getElementById('resultSection').classList.add('hidden');
+}
+function resetProgress() {
+  document.getElementById('uploadSection').classList.remove('hidden');
+  document.getElementById('progressSection').classList.add('hidden');
+}
+function showResult(fname, count) {
+  document.getElementById('progressSection').classList.add('hidden');
+  document.getElementById('resultSection').classList.remove('hidden');
+  document.getElementById('resultFilename').textContent = fname;
+  document.getElementById('statCount').textContent = count;
+}
+function setProgress(pct, msg) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressMsg').textContent  = msg;
+}
+function resetApp() {
+  tableData = [];
+  document.getElementById('xlBody').innerHTML = '';
+  document.getElementById('fileInput').value  = '';
+  document.getElementById('uploadSection').classList.remove('hidden');
+  document.getElementById('resultSection').classList.add('hidden');
+  document.getElementById('progressSection').classList.add('hidden');
+}
+</script>
+</body>
+</html>
