@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Görsel & İçerik Excel Dönüştürücü</title>
+  <title>Görsel &amp; İçerik Excel Dönüştürücü</title>
 
-  <!-- Libraries (CDN) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,16 +17,14 @@
       --green:       #217346;
       --green-dark:  #185c37;
       --green-light: #e7f3ec;
-      --blue:        #2563eb;
-      --blue-light:  #eff6ff;
       --border:      #d1d5db;
       --bg:          #f3f4f6;
       --card:        #ffffff;
       --text:        #111827;
       --muted:       #6b7280;
       --row-even:    #f0f7ee;
-      --shadow:      0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.07);
-      --shadow-lg:   0 8px 24px rgba(0,0,0,0.12);
+      --shadow:      0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.07);
+      --shadow-lg:   0 8px 24px rgba(0,0,0,.12);
     }
 
     body {
@@ -36,224 +34,145 @@
       min-height: 100vh;
     }
 
-    /* ─── Header ─────────────────────────────────────────────────────── */
+    /* ── Header ─────────────────────────────────────────── */
     header {
-      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
+      background: linear-gradient(135deg, var(--green-dark), var(--green));
       color: #fff;
       padding: 1.4rem 2rem;
       box-shadow: var(--shadow-lg);
-      display: flex;
-      align-items: center;
-      gap: 1rem;
+      display: flex; align-items: center; gap: 1rem;
     }
     header .logo { font-size: 2rem; }
     header h1   { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
     header p    { font-size: .82rem; opacity: .8; margin-top: .15rem; }
 
-    /* ─── Layout ─────────────────────────────────────────────────────── */
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
+    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
-    /* ─── Upload Area ─────────────────────────────────────────────────── */
+    /* ── Upload area ─────────────────────────────────────── */
     .upload-area {
       background: var(--card);
       border: 2.5px dashed var(--border);
       border-radius: 14px;
-      padding: 3.5rem 2rem;
+      padding: 3rem 2rem;
       text-align: center;
-      cursor: pointer;
       transition: border-color .2s, background .2s;
       box-shadow: var(--shadow);
     }
-    .upload-area:hover,
-    .upload-area.drag-over {
-      border-color: var(--green);
-      background: var(--green-light);
-    }
-    .upload-icon { font-size: 3.5rem; margin-bottom: 1rem; }
-    .upload-area h2  { font-size: 1.2rem; font-weight: 600; margin-bottom: .4rem; }
-    .upload-area p   { color: var(--muted); font-size: .875rem; margin-bottom: 1.5rem; }
-    .upload-area .formats {
-      display: inline-flex; gap: .5rem; margin-bottom: 1.5rem;
-    }
-    .format-badge {
-      background: var(--green-light);
-      color: var(--green-dark);
-      border: 1px solid #b7dfca;
-      border-radius: 100px;
-      padding: .2rem .7rem;
-      font-size: .78rem;
-      font-weight: 600;
-    }
+    .upload-area.drag-over { border-color: var(--green); background: var(--green-light); }
 
-    /* ─── Buttons ─────────────────────────────────────────────────────── */
+    .upload-icon { font-size: 3rem; margin-bottom: .75rem; }
+    .upload-area h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: .35rem; }
+    .upload-area > p { color: var(--muted); font-size: .875rem; margin-bottom: 1.25rem; }
+
+    /* format badges */
+    .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; margin-bottom: 1.5rem; }
+    .badge {
+      border-radius: 100px; padding: .18rem .65rem;
+      font-size: .75rem; font-weight: 700;
+    }
+    .badge-green { background: var(--green-light); color: var(--green-dark); border: 1px solid #b7dfca; }
+    .badge-blue  { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-orange{ background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+
+    /* upload buttons */
+    .upload-btns { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Buttons ─────────────────────────────────────────── */
     .btn {
       display: inline-flex; align-items: center; gap: .45rem;
-      padding: .6rem 1.2rem;
-      border: none; border-radius: 8px;
+      padding: .6rem 1.2rem; border: none; border-radius: 8px;
       font-size: .875rem; font-weight: 600; cursor: pointer;
       transition: all .15s ease;
     }
-    .btn-primary  { background: var(--green); color: #fff; }
-    .btn-primary:hover  { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(33,115,70,.35); }
-    .btn-export   { background: #1d6f42; color: #fff; }
-    .btn-export:hover   { background: #155433; transform: translateY(-1px); }
-    .btn-secondary{ background: #fff; color: var(--text); border: 1px solid var(--border); }
-    .btn-secondary:hover{ background: var(--bg); }
+    .btn-green   { background: var(--green); color: #fff; }
+    .btn-green:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(33,115,70,.35); }
+    .btn-blue    { background: #2563eb; color: #fff; }
+    .btn-blue:hover  { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.35); }
+    .btn-export  { background: #1d6f42; color: #fff; }
+    .btn-export:hover { background: #155433; transform: translateY(-1px); }
+    .btn-ghost   { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
 
-    /* ─── Progress ─────────────────────────────────────────────────────── */
+    /* ── Progress ─────────────────────────────────────────── */
     .progress-card {
-      background: var(--card);
-      border-radius: 14px;
-      padding: 2.5rem 2rem;
-      text-align: center;
-      box-shadow: var(--shadow);
+      background: var(--card); border-radius: 14px;
+      padding: 2.5rem 2rem; text-align: center; box-shadow: var(--shadow);
     }
     .progress-card h2 { font-size: 1.05rem; font-weight: 600; margin: .75rem 0 .5rem; }
     .progress-track {
-      background: #e5e7eb;
-      border-radius: 100px;
-      height: 9px;
-      overflow: hidden;
-      margin: .75rem 0;
+      background: #e5e7eb; border-radius: 100px;
+      height: 9px; overflow: hidden; margin: .75rem 0;
     }
     .progress-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--green), #4ade80);
-      border-radius: 100px;
-      width: 0%;
-      transition: width .3s ease;
+      border-radius: 100px; width: 0%; transition: width .3s ease;
     }
     .progress-msg { font-size: .82rem; color: var(--muted); }
 
-    /* ─── Result ─────────────────────────────────────────────────────── */
-    .result-card {
-      background: var(--card);
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
+    /* ── Result card ─────────────────────────────────────── */
+    .result-card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
     .result-topbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 1.5rem;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem; background: var(--bg); border-bottom: 1px solid var(--border);
+      gap: 1rem; flex-wrap: wrap;
     }
     .result-topbar h2 {
       font-size: .95rem; font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 400px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px;
     }
     .stat-badge {
-      background: var(--green-light);
-      color: var(--green-dark);
-      border-radius: 100px;
-      padding: .18rem .6rem;
-      font-size: .78rem; font-weight: 700;
-      margin-right: .4rem;
+      background: var(--green-light); color: var(--green-dark);
+      border-radius: 100px; padding: .18rem .6rem;
+      font-size: .78rem; font-weight: 700; margin-right: .4rem;
     }
-    .actions { display: flex; gap: .6rem; }
+    .actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 
-    /* ─── Excel Table ─────────────────────────────────────────────────── */
-    .table-scroll {
-      overflow: auto;
-      max-height: 72vh;
+    /* ── Table ───────────────────────────────────────────── */
+    .table-scroll { overflow: auto; max-height: 72vh; }
+
+    table.xl { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    table.xl thead { position: sticky; top: 0; z-index: 10; }
+
+    table.xl th.rn, table.xl td.rn {
+      width: 46px; min-width: 46px; background: #e9ecef; color: var(--muted);
+      text-align: center; font-size: .78rem; border: 1px solid var(--border); padding: .5rem .25rem;
     }
-
-    table.xl {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .875rem;
-    }
-
-    table.xl thead {
-      position: sticky; top: 0; z-index: 10;
-    }
-
-    /* Row-number column */
-    table.xl th.rn,
-    table.xl td.rn {
-      width: 46px; min-width: 46px;
-      background: #e9ecef;
-      color: var(--muted);
-      text-align: center;
-      font-size: .78rem;
-      border: 1px solid var(--border);
-      padding: .5rem .25rem;
-    }
-
-    /* Section headers (Görseller / İçerikler) */
-    table.xl thead tr th.col-img,
-    table.xl thead tr th.col-txt {
-      background: var(--green);
-      color: #fff;
-      text-align: center;
-      padding: .8rem 1rem;
-      font-size: .88rem;
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
+    table.xl thead th.col-img,
+    table.xl thead th.col-txt {
+      background: var(--green); color: #fff; text-align: center;
+      padding: .8rem 1rem; font-size: .88rem; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
       border: 1px solid rgba(255,255,255,.2);
     }
-    table.xl thead tr th.col-img { width: 310px; min-width: 260px; }
-    table.xl thead tr th.col-txt { min-width: 300px; }
+    table.xl thead th.col-img { width: 310px; min-width: 260px; }
+    table.xl thead th.col-txt { min-width: 300px; }
 
-    /* Body rows */
     table.xl tbody tr:nth-child(even) { background: var(--row-even); }
     table.xl tbody tr:hover           { background: #dbeafe; }
-
-    table.xl td {
-      vertical-align: top;
-      border: 1px solid var(--border);
-      padding: .7rem .9rem;
-    }
+    table.xl td { vertical-align: top; border: 1px solid var(--border); padding: .7rem .9rem; }
     table.xl td.col-img { text-align: center; }
 
     .thumb {
-      max-width: 270px;
-      max-height: 190px;
-      object-fit: contain;
-      border-radius: 4px;
-      cursor: zoom-in;
-      transition: transform .2s;
+      max-width: 270px; max-height: 190px; object-fit: contain;
+      border-radius: 4px; cursor: zoom-in; transition: transform .2s;
     }
-    .thumb:hover { transform: scale(1.03); }
+    .thumb:hover { transform: scale(1.04); }
 
-    .img-label {
-      font-size: .72rem;
-      color: var(--muted);
-      margin-top: .35rem;
-    }
-
-    .no-img {
-      color: #9ca3af;
-      font-style: italic;
-      font-size: .82rem;
-      padding: 1rem 0;
-    }
+    .img-label { font-size: .7rem; color: var(--muted); margin-top: .35rem; word-break: break-all; }
+    .no-img    { color: #9ca3af; font-style: italic; font-size: .82rem; padding: 1rem 0; }
 
     .cell-text {
-      white-space: pre-wrap;
-      line-height: 1.7;
-      outline: none;
-      min-height: 3rem;
+      white-space: pre-wrap; line-height: 1.7; outline: none;
+      min-height: 3rem; padding: 2px;
     }
-    .cell-text:focus {
-      background: #fefce8;
-      border-radius: 4px;
-    }
+    .cell-text:focus { background: #fefce8; border-radius: 4px; }
 
-    /* ─── Lightbox ─────────────────────────────────────────────────────── */
+    /* ── Lightbox ─────────────────────────────────────────── */
     .lb-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.88);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.88); z-index: 9999;
+      align-items: center; justify-content: center;
     }
     .lb-overlay.open { display: flex; }
     .lb-overlay img  { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 6px; }
@@ -264,85 +183,88 @@
       cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
 
-    /* ─── Helpers ─────────────────────────────────────────────────────── */
     .hidden { display: none !important; }
     .mt { margin-top: 1.25rem; }
 
-    /* ─── Responsive ─────────────────────────────────────────────────── */
     @media (max-width: 640px) {
       .container { padding: 1rem; }
-      table.xl thead tr th.col-img { width: 160px; min-width: 130px; }
+      table.xl thead th.col-img { width: 160px; min-width: 130px; }
       .thumb { max-width: 140px; max-height: 120px; }
-      .result-topbar h2 { max-width: 160px; }
+      .result-topbar h2 { max-width: 180px; }
     }
   </style>
 </head>
 <body>
 
-<!-- ─── Header ──────────────────────────────────────────────────────── -->
 <header>
   <div class="logo">📊</div>
   <div>
     <h1>Görsel &amp; İçerik Excel Dönüştürücü</h1>
-    <p>PDF veya Word dosyasındaki görselleri ve içerikleri otomatik eşleştirin</p>
+    <p>PDF · DOCX · PNG/JPG · Klasör · ZIP — her türlü dosyadan otomatik eşleştirme</p>
   </div>
 </header>
 
 <div class="container">
 
-  <!-- ─── Upload ─────────────────────────────────────────────────────── -->
+  <!-- Upload -->
   <div id="uploadSection" class="upload-area"
-       onclick="fileInput.click()"
-       ondragover="onDragOver(event)"
-       ondrop="onDrop(event)"
-       ondragleave="onDragLeave(event)">
+       ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+
     <div class="upload-icon">📂</div>
-    <h2>Dosyanızı buraya sürükleyip bırakın</h2>
-    <p>ya da aşağıdaki düğmeye tıklayarak seçin</p>
+    <h2>Dosya, klasör veya ZIP'i buraya sürükleyin</h2>
+    <p>ya da aşağıdan seçin — birden fazla görsel aynı anda yüklenebilir</p>
+
     <div class="formats">
-      <span class="format-badge">PDF</span>
-      <span class="format-badge">DOCX</span>
-      <span class="format-badge">DOC</span>
+      <span class="badge badge-green">PDF</span>
+      <span class="badge badge-green">DOCX</span>
+      <span class="badge badge-blue">PNG</span>
+      <span class="badge badge-blue">JPG</span>
+      <span class="badge badge-blue">WEBP</span>
+      <span class="badge badge-blue">GIF</span>
+      <span class="badge badge-orange">ZIP</span>
+      <span class="badge badge-orange">Klasör</span>
     </div>
-    <br/>
-    <button class="btn btn-primary" onclick="event.stopPropagation(); fileInput.click()">
-      📁 Dosya Seç
-    </button>
-    <input type="file" id="fileInput" accept=".pdf,.docx,.doc" style="display:none"
-           onchange="handleFileSelect(event)" />
+
+    <div class="upload-btns">
+      <button class="btn btn-green" onclick="fileInput.click()">📄 Dosya / Görsel Seç</button>
+      <button class="btn btn-blue"  onclick="folderInput.click()">📁 Klasör Seç</button>
+    </div>
+
+    <!-- accepts files + multiple images + ZIP -->
+    <input type="file" id="fileInput" multiple
+           accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip"
+           style="display:none" onchange="handleFiles(this.files)" />
+    <!-- folder picker -->
+    <input type="file" id="folderInput" multiple webkitdirectory
+           style="display:none" onchange="handleFiles(this.files)" />
   </div>
 
-  <!-- ─── Progress ──────────────────────────────────────────────────── -->
+  <!-- Progress -->
   <div id="progressSection" class="progress-card mt hidden">
     <div style="font-size:2.2rem">⚙️</div>
-    <h2 id="progressTitle">Dosya işleniyor…</h2>
-    <div class="progress-track">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
+    <h2>İşleniyor…</h2>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     <p class="progress-msg" id="progressMsg">Lütfen bekleyin…</p>
   </div>
 
-  <!-- ─── Result ────────────────────────────────────────────────────── -->
+  <!-- Result -->
   <div id="resultSection" class="result-card mt hidden">
-
     <div class="result-topbar">
       <div>
         <h2 id="resultFilename">—</h2>
-        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;font-size:.82rem;color:var(--muted)">
-          <span class="stat-badge" id="statCount">0</span> kayıt eşleştirildi &nbsp;·&nbsp;
-          <span style="font-size:.78rem;color:var(--muted)">
-            İçerik hücrelerine tıklayarak düzenleme yapabilirsiniz
-          </span>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;font-size:.8rem;color:var(--muted)">
+          <span class="stat-badge" id="statCount">0</span> kayıt &nbsp;·&nbsp;
+          İçerik hücrelerine tıklayarak düzenleme yapabilirsiniz
         </div>
       </div>
       <div class="actions">
         <button class="btn btn-export" onclick="exportExcel()">📥 Excel'e Aktar</button>
-        <button class="btn btn-secondary" onclick="resetApp()">🔄 Yeni Dosya</button>
+        <button class="btn btn-ghost"  onclick="resetApp()">🔄 Yeni Dosya</button>
       </div>
     </div>
 
     <div class="table-scroll">
-      <table class="xl" id="xlTable">
+      <table class="xl">
         <thead>
           <tr>
             <th class="rn">#</th>
@@ -353,197 +275,279 @@
         <tbody id="xlBody"></tbody>
       </table>
     </div>
-
   </div>
 
-</div><!-- /container -->
+</div>
 
-<!-- ─── Lightbox ──────────────────────────────────────────────────── -->
+<!-- Lightbox -->
 <div class="lb-overlay" id="lbOverlay" onclick="closeLb()">
   <button class="lb-close" onclick="closeLb()">✕</button>
   <img id="lbImg" src="" alt="" onclick="event.stopPropagation()" />
 </div>
 
 <script>
-// ─────────────────────────────────────────────────────────────────────
-//  PDF.js worker
-// ─────────────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let tableData      = [];
-let currentName    = 'tablo';
+const IMAGE_EXTS = ['jpg','jpeg','png','webp','gif','bmp','tiff','avif'];
+const TEXT_EXTS  = ['txt'];
 
-// ─────────────────────────────────────────────────────────────────────
-//  Drag-and-drop helpers
-// ─────────────────────────────────────────────────────────────────────
+let tableData   = [];
+let currentName = 'tablo';
+
+// ── Helpers ──────────────────────────────────────────────────────────
+const getExt = name => name.split('.').pop().toLowerCase();
+
+const MIME_MAP = {
+  jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
+  webp:'image/webp', gif:'image/gif', bmp:'image/bmp',
+  tiff:'image/tiff', avif:'image/avif'
+};
+const getMime = ext => MIME_MAP[ext] || 'image/jpeg';
+
+function fileToDataURL(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────────
 function onDragOver(e)  { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
 function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-function onDrop(e) {
+
+async function onDrop(e) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0];
-  if (f) processFile(f);
-}
-function handleFileSelect(e) {
-  const f = e.target.files[0];
-  if (f) processFile(f);
+
+  const items = Array.from(e.dataTransfer.items || []);
+  const files = Array.from(e.dataTransfer.files || []);
+
+  // Check for dropped folder via DataTransferItem API
+  if (items.length && items[0].webkitGetAsEntry) {
+    const entries = items.map(i => i.webkitGetAsEntry()).filter(Boolean);
+    const hasDir  = entries.some(en => en.isDirectory);
+    if (hasDir) {
+      const allFiles = [];
+      for (const en of entries) await readEntry(en, allFiles);
+      return route(allFiles, 'Klasör');
+    }
+  }
+
+  if (files.length) handleFiles(files);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  Entry point
-// ─────────────────────────────────────────────────────────────────────
-async function processFile(file) {
-  currentName = file.name.replace(/\.[^.]+$/, '');
-  const ext   = file.name.split('.').pop().toLowerCase();
+// Recursively read a FileSystemEntry
+async function readEntry(entry, out) {
+  if (entry.isFile) {
+    const f = await new Promise(res => entry.file(res));
+    out.push(f);
+  } else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    // readEntries may return results in batches — loop until empty
+    let batch;
+    do {
+      batch = await new Promise(res => reader.readEntries(res));
+      for (const ch of batch) await readEntry(ch, out);
+    } while (batch.length);
+  }
+}
 
+// ── Entry routing ────────────────────────────────────────────────────
+function handleFiles(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  // Single recognised document / ZIP
+  if (files.length === 1) {
+    const ext = getExt(files[0].name);
+    if (ext === 'pdf')                    return route(files, files[0].name, 'pdf');
+    if (ext === 'docx' || ext === 'doc') return route(files, files[0].name, 'docx');
+    if (ext === 'zip')                   return route(files, files[0].name, 'zip');
+    if (IMAGE_EXTS.includes(ext))        return route(files, files[0].name, 'images');
+  }
+
+  // Multiple files → treat as image set (+ optional .txt sidecars)
+  route(files, `${files.length} dosya`, 'images');
+}
+
+async function route(files, label, type) {
+  currentName = (typeof label === 'string' ? label : 'tablo').replace(/\.[^.]+$/, '');
   showProgress();
-  setProgress(0, 'Dosya okunuyor…');
-
+  setProgress(0, 'Başlatılıyor…');
   try {
     let rows = [];
-    if (ext === 'pdf') {
-      rows = await processPDF(file);
-    } else if (ext === 'docx' || ext === 'doc') {
-      rows = await processDOCX(file);
-    } else {
-      alert('Desteklenmeyen format. Lütfen PDF veya DOCX/DOC yükleyin.');
-      resetProgress();
-      return;
-    }
+    if      (type === 'pdf')    rows = await processPDF(files[0]);
+    else if (type === 'docx')   rows = await processDOCX(files[0]);
+    else if (type === 'zip')    rows = await processZIP(files[0]);
+    else                        rows = await processImages(files);
 
     if (!rows.length) {
-      alert('Dosyadan görsel veya içerik çıkarılamadı.\nDosyanın metin ve/veya görsel içerdiğini kontrol edin.');
-      resetProgress();
-      return;
+      alert('Görsel veya içerik bulunamadı.\nDosyaları kontrol edin.');
+      resetProgress(); return;
     }
-
     tableData = rows;
     renderTable(rows);
-    showResult(file.name, rows.length);
-
+    showResult(label, rows.length);
   } catch (err) {
     console.error(err);
-    alert('İşlem sırasında hata oluştu:\n' + err.message);
+    alert('Hata: ' + err.message);
     resetProgress();
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  PDF → rows
-//  Her sayfa → 1 satır (sayfa görseli + o sayfadaki metin)
-// ─────────────────────────────────────────────────────────────────────
+// ── PDF ──────────────────────────────────────────────────────────────
 async function processPDF(file) {
   const buf = await file.arrayBuffer();
   setProgress(8, 'PDF yükleniyor…');
-
-  const pdf  = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const rows = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    const pct = 8 + Math.round((i / pdf.numPages) * 84);
-    setProgress(pct, `Sayfa ${i} / ${pdf.numPages} işleniyor…`);
-
+    setProgress(8 + Math.round(i / pdf.numPages * 84), `Sayfa ${i}/${pdf.numPages}…`);
     const page     = await pdf.getPage(i);
     const viewport = page.getViewport({ scale: 1.6 });
     const canvas   = document.createElement('canvas');
     canvas.width   = viewport.width;
     canvas.height  = viewport.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    const imgSrc = canvas.toDataURL('image/jpeg', 0.88);
 
     const tc   = await page.getTextContent();
     const text = tc.items.map(t => t.str).join(' ').replace(/\s+/g, ' ').trim();
 
-    rows.push({
-      index:   i,
-      label:   `Sayfa ${i}`,
-      imgSrc,
-      content: text || '(Bu sayfada metin bulunamadı)'
-    });
+    rows.push({ index: i, label: `Sayfa ${i}`, imgSrc: canvas.toDataURL('image/jpeg', .88),
+                content: text || '(Bu sayfada metin yok)' });
   }
-
   setProgress(100, 'Tamamlandı!');
   return rows;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  DOCX → rows
-//  Mammoth ile HTML'e çevir, görsel + ardından gelen metin eşleştir
-// ─────────────────────────────────────────────────────────────────────
+// ── DOCX ─────────────────────────────────────────────────────────────
 async function processDOCX(file) {
   const buf = await file.arrayBuffer();
   setProgress(10, 'Word dosyası okunuyor…');
 
   const result = await mammoth.convertToHtml({ arrayBuffer: buf }, {
-    convertImage: mammoth.images.imgElement(function(img) {
-      return img.read('base64').then(function(b64) {
-        return { src: 'data:' + img.contentType + ';base64,' + b64 };
-      });
-    })
+    convertImage: mammoth.images.imgElement(img =>
+      img.read('base64').then(b64 => ({ src: 'data:' + img.contentType + ';base64,' + b64 }))
+    )
   });
 
-  setProgress(60, 'Görseller ve içerikler eşleştiriliyor…');
-
+  setProgress(60, 'Eşleştiriliyor…');
   const parser = new DOMParser();
   const doc    = parser.parseFromString(result.value, 'text/html');
+  const rows   = [];
+  let curImg   = null, curTexts = [], idx = 0;
 
-  const rows     = [];
-  let curImg     = null;
-  let curTexts   = [];
-  let idx        = 0;
-
-  // Walk top-level block elements
-  const blocks = Array.from(doc.body.children);
-
-  function flushRow() {
+  function flush() {
     if (curImg !== null) {
-      idx++;
-      rows.push({
-        index:   idx,
-        label:   `Görsel ${idx}`,
-        imgSrc:  curImg,
-        content: curTexts.join('\n').trim() || '(İçerik bulunamadı)'
-      });
-      curImg   = null;
-      curTexts = [];
+      rows.push({ index: ++idx, label: `Görsel ${idx}`, imgSrc: curImg,
+                  content: curTexts.join('\n').trim() || '' });
+      curImg = null; curTexts = [];
     }
   }
 
-  for (const el of blocks) {
+  for (const el of Array.from(doc.body.children)) {
     const img = el.querySelector('img');
-    if (img) {
-      flushRow();
-      curImg = img.src;
-    } else {
-      const t = el.innerText ? el.innerText.trim() : el.textContent.trim();
-      if (t) curTexts.push(t);
-    }
+    if (img) { flush(); curImg = img.src; }
+    else { const t = el.textContent.trim(); if (t) curTexts.push(t); }
   }
-  flushRow();
+  flush();
 
-  // Fallback: görsel var ama eşleşme bulunamadıysa sıralı eşleştir
+  // Fallback: sequential pairing
   if (!rows.length) {
     const imgs  = Array.from(doc.querySelectorAll('img'));
     const texts = Array.from(doc.querySelectorAll('p,h1,h2,h3,h4,li'))
-                       .map(el => el.textContent.trim()).filter(Boolean);
-    imgs.forEach((img, i) => {
-      rows.push({
-        index:   i + 1,
-        label:   `Görsel ${i + 1}`,
-        imgSrc:  img.src,
-        content: texts[i] || '(İçerik bulunamadı)'
-      });
-    });
+                       .map(e => e.textContent.trim()).filter(Boolean);
+    imgs.forEach((img, i) => rows.push({
+      index: i + 1, label: `Görsel ${i+1}`, imgSrc: img.src,
+      content: texts[i] || ''
+    }));
   }
 
   setProgress(100, 'Tamamlandı!');
   return rows;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  Table rendering
-// ─────────────────────────────────────────────────────────────────────
+// ── Image files (PNG/JPG/etc. + optional .txt sidecars) ──────────────
+async function processImages(files) {
+  const imgFiles = files.filter(f => IMAGE_EXTS.includes(getExt(f.name)));
+  const txtFiles = files.filter(f => TEXT_EXTS.includes(getExt(f.name)));
+
+  // Sort images: by webkitRelativePath (folder upload) or by name
+  imgFiles.sort((a, b) =>
+    (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name));
+
+  // Build text sidecar lookup: filename-without-ext → text
+  const textMap = {};
+  for (const tf of txtFiles) {
+    const key = tf.name.replace(/\.[^.]+$/, '').toLowerCase();
+    textMap[key] = await tf.text();
+  }
+
+  const rows = [];
+  for (let i = 0; i < imgFiles.length; i++) {
+    setProgress(Math.round((i / imgFiles.length) * 92), `Görsel ${i+1}/${imgFiles.length}…`);
+    const f   = imgFiles[i];
+    const key = f.name.replace(/\.[^.]+$/, '').toLowerCase();
+    const lbl = f.webkitRelativePath || f.name;
+    rows.push({
+      index:   i + 1,
+      label:   lbl,
+      imgSrc:  await fileToDataURL(f),
+      content: textMap[key] || ''
+    });
+  }
+  setProgress(100, 'Tamamlandı!');
+  return rows;
+}
+
+// ── ZIP ──────────────────────────────────────────────────────────────
+async function processZIP(file) {
+  const buf = await file.arrayBuffer();
+  setProgress(10, 'ZIP açılıyor…');
+  const zip = await JSZip.loadAsync(buf);
+
+  const imgEntries = [], txtEntries = [];
+  zip.forEach((path, entry) => {
+    if (entry.dir) return;
+    const ext = getExt(path);
+    if (IMAGE_EXTS.includes(ext)) imgEntries.push({ path, entry, ext });
+    if (TEXT_EXTS.includes(ext))  txtEntries.push({ path, entry });
+  });
+
+  // Ignore macOS __MACOSX junk
+  const cleanImgs = imgEntries.filter(e => !e.path.startsWith('__MACOSX'));
+  cleanImgs.sort((a, b) => a.path.localeCompare(b.path));
+
+  const textMap = {};
+  for (const { path, entry } of txtEntries) {
+    const fname = path.split('/').pop();
+    const key   = fname.replace(/\.[^.]+$/, '').toLowerCase();
+    textMap[key] = await entry.async('string');
+  }
+
+  const rows = [];
+  for (let i = 0; i < cleanImgs.length; i++) {
+    setProgress(15 + Math.round(i / cleanImgs.length * 78), `Görsel ${i+1}/${cleanImgs.length}…`);
+    const { path, entry, ext } = cleanImgs[i];
+    const fname = path.split('/').pop();
+    const key   = fname.replace(/\.[^.]+$/, '').toLowerCase();
+    const b64   = await entry.async('base64');
+    rows.push({
+      index:   i + 1,
+      label:   path,
+      imgSrc:  `data:${getMime(ext)};base64,${b64}`,
+      content: textMap[key] || ''
+    });
+  }
+  setProgress(100, 'Tamamlandı!');
+  return rows;
+}
+
+// ── Table render ─────────────────────────────────────────────────────
 function renderTable(rows) {
   const tbody = document.getElementById('xlBody');
   tbody.innerHTML = '';
@@ -551,9 +555,9 @@ function renderTable(rows) {
   rows.forEach((row, ri) => {
     const tr = document.createElement('tr');
 
-    // Row-number cell
+    // # cell
     const tdRn = document.createElement('td');
-    tdRn.className = 'rn';
+    tdRn.className   = 'rn';
     tdRn.textContent = row.index;
     tr.appendChild(tdRn);
 
@@ -561,14 +565,14 @@ function renderTable(rows) {
     const tdImg = document.createElement('td');
     tdImg.className = 'col-img';
     if (row.imgSrc) {
-      const img       = document.createElement('img');
-      img.className   = 'thumb';
-      img.src         = row.imgSrc;
-      img.alt         = row.label;
-      img.title       = 'Büyütmek için tıklayın';
+      const img     = document.createElement('img');
+      img.className = 'thumb';
+      img.src       = row.imgSrc;
+      img.alt       = row.label;
+      img.title     = 'Büyütmek için tıklayın';
       img.addEventListener('click', () => openLb(row.imgSrc));
       tdImg.appendChild(img);
-      const lbl       = document.createElement('div');
+      const lbl     = document.createElement('div');
       lbl.className   = 'img-label';
       lbl.textContent = row.label;
       tdImg.appendChild(lbl);
@@ -587,9 +591,7 @@ function renderTable(rows) {
     div.className       = 'cell-text';
     div.contentEditable = 'true';
     div.textContent     = row.content;
-    div.addEventListener('blur', () => {
-      tableData[ri].content = div.textContent.trim();
-    });
+    div.addEventListener('blur', () => { tableData[ri].content = div.textContent.trim(); });
     tdTxt.appendChild(div);
     tr.appendChild(tdTxt);
 
@@ -597,32 +599,18 @@ function renderTable(rows) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  Excel export  (SheetJS — metin + görsel etiketi)
-// ─────────────────────────────────────────────────────────────────────
+// ── Excel export ─────────────────────────────────────────────────────
 function exportExcel() {
-  const wb = XLSX.utils.book_new();
-
+  const wb     = XLSX.utils.book_new();
   const wsData = [['#', 'Görseller', 'İçerikler']];
-  tableData.forEach(row => {
-    wsData.push([row.index, row.label, row.content]);
-  });
-
+  tableData.forEach(r => wsData.push([r.index, r.label, r.content]));
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Column widths
-  ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 90 }];
-
-  // Bold header row via cell styles (xlsx basic style via !merges trick)
-  // SheetJS free version does not support rich styles, so we keep it clean.
-
+  ws['!cols'] = [{ wch: 5 }, { wch: 45 }, { wch: 90 }];
   XLSX.utils.book_append_sheet(wb, ws, 'Ürün Tablosu');
   XLSX.writeFile(wb, currentName + '_tablo.xlsx');
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  Lightbox
-// ─────────────────────────────────────────────────────────────────────
+// ── Lightbox ─────────────────────────────────────────────────────────
 function openLb(src) {
   document.getElementById('lbImg').src = src;
   document.getElementById('lbOverlay').classList.add('open');
@@ -633,9 +621,7 @@ function closeLb() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
 
-// ─────────────────────────────────────────────────────────────────────
-//  UI state helpers
-// ─────────────────────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────
 function showProgress() {
   document.getElementById('uploadSection').classList.add('hidden');
   document.getElementById('progressSection').classList.remove('hidden');
@@ -645,10 +631,10 @@ function resetProgress() {
   document.getElementById('uploadSection').classList.remove('hidden');
   document.getElementById('progressSection').classList.add('hidden');
 }
-function showResult(fname, count) {
+function showResult(label, count) {
   document.getElementById('progressSection').classList.add('hidden');
   document.getElementById('resultSection').classList.remove('hidden');
-  document.getElementById('resultFilename').textContent = fname;
+  document.getElementById('resultFilename').textContent = label;
   document.getElementById('statCount').textContent = count;
 }
 function setProgress(pct, msg) {
@@ -657,8 +643,9 @@ function setProgress(pct, msg) {
 }
 function resetApp() {
   tableData = [];
-  document.getElementById('xlBody').innerHTML = '';
-  document.getElementById('fileInput').value  = '';
+  document.getElementById('xlBody').innerHTML    = '';
+  document.getElementById('fileInput').value     = '';
+  document.getElementById('folderInput').value   = '';
   document.getElementById('uploadSection').classList.remove('hidden');
   document.getElementById('resultSection').classList.add('hidden');
   document.getElementById('progressSection').classList.add('hidden');
