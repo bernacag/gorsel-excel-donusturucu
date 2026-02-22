@@ -115,23 +115,50 @@
     table.xl { width: 100%; border-collapse: collapse; font-size: .875rem; }
     table.xl thead { position: sticky; top: 0; z-index: 10; }
 
+    /* Row-number */
     table.xl th.rn, table.xl td.rn {
       width: 42px; min-width: 42px; background: #e9ecef; color: var(--muted);
       text-align: center; font-size: .78rem; border: 1px solid var(--border); padding: .5rem .25rem;
     }
-    table.xl thead th {
-      background: var(--green); color: #fff; text-align: center;
-      padding: .75rem 1rem; font-size: .85rem; font-weight: 700;
-      letter-spacing: .05em; text-transform: uppercase; border: 1px solid rgba(255,255,255,.2);
-      white-space: nowrap;
+
+    /* ── Group header row (1. satır) ─────────────────────── */
+    table.xl thead tr.group-row th {
+      text-align: center; padding: .65rem 1rem;
+      font-size: .82rem; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; border: none;
     }
-    table.xl thead th.col-img { width: 280px; min-width: 240px; }
-    table.xl thead th.col-txt { min-width: 180px; }
+    table.xl thead tr.group-row th.g-img {
+      background: var(--green-dark); color: #fff;
+      border-right: 4px solid #fff;
+    }
+    table.xl thead tr.group-row th.g-txt {
+      background: #1e3a8a; color: #fff;
+    }
+    table.xl thead tr.group-row th.g-rn {
+      background: #374151; color: #fff;
+      border-right: 2px solid rgba(255,255,255,.3);
+    }
+
+    /* ── Sub-header row (2. satır) ───────────────────────── */
+    table.xl thead tr.sub-row th {
+      text-align: center; padding: .55rem .9rem;
+      font-size: .78rem; font-weight: 700; white-space: nowrap;
+      border: 1px solid rgba(255,255,255,.25);
+    }
+    table.xl thead tr.sub-row th.rn  { background: #4b5563; color: #e5e7eb; }
+    table.xl thead tr.sub-row th.s-img { background: var(--green); color: #fff; width: 280px; min-width: 240px; }
+    table.xl thead tr.sub-row th.s-txt { background: #2563eb; color: #fff; min-width: 180px; }
+
+    /* Separator: ilk içerik sütununun sol kenarı */
+    table.xl td.sep-left, table.xl th.sep-left {
+      border-left: 4px solid #374151 !important;
+    }
 
     table.xl tbody tr:nth-child(even) { background: var(--row-even); }
     table.xl tbody tr:hover { background: #dbeafe; }
     table.xl td { vertical-align: top; border: 1px solid var(--border); padding: .7rem .9rem; }
-    table.xl td.col-img { text-align: center; }
+    table.xl td.col-img { text-align: center; background: #f8fffe; }
+    table.xl td.col-txt { background: #f8faff; }
 
     .thumb { max-width: 240px; max-height: 180px; object-fit: contain; border-radius: 4px; cursor: zoom-in; transition: transform .2s; }
     .thumb:hover { transform: scale(1.04); }
@@ -507,18 +534,48 @@ async function processZIP(file) {
 function renderTable(rows) {
   const maxCols = Math.max(0, ...rows.map(r => r.textLines.length));
 
-  // Build header
+  // ── 2-row header ─────────────────────────────────────────
   const thead = document.getElementById('xlHead');
-  const headerRow = thead.querySelector('tr');
-  // Clear existing text-col headers
-  while (headerRow.children.length > 2) headerRow.removeChild(headerRow.lastChild);
+  thead.innerHTML = '';
+
+  // Row 1 — grup başlıkları
+  const grpRow = document.createElement('tr');
+  grpRow.className = 'group-row';
+
+  const gRn = document.createElement('th');
+  gRn.className = 'g-rn'; gRn.rowSpan = 1; gRn.textContent = '#';
+  grpRow.appendChild(gRn);
+
+  const gImg = document.createElement('th');
+  gImg.className = 'g-img'; gImg.textContent = '🖼  Görseller';
+  grpRow.appendChild(gImg);
+
+  if (maxCols > 0) {
+    const gTxt = document.createElement('th');
+    gTxt.className = 'g-txt'; gTxt.colSpan = maxCols; gTxt.textContent = '📝  İçerikler';
+    grpRow.appendChild(gTxt);
+  }
+  thead.appendChild(grpRow);
+
+  // Row 2 — alt başlıklar
+  const subRow = document.createElement('tr');
+  subRow.className = 'sub-row';
+
+  const sRn = document.createElement('th'); sRn.className = 'rn'; sRn.textContent = '#';
+  subRow.appendChild(sRn);
+
+  const sImg = document.createElement('th'); sImg.className = 's-img'; sImg.textContent = 'Görsel';
+  subRow.appendChild(sImg);
+
   for (let c = 0; c < maxCols; c++) {
     const th = document.createElement('th');
-    th.className   = 'col-txt';
+    th.className = 's-txt' + (c === 0 ? ' sep-left' : '');
     th.textContent = `İçerik ${c + 1}`;
-    headerRow.appendChild(th);
+    subRow.appendChild(th);
   }
+  thead.appendChild(subRow);
 
+  // ── Body rows ─────────────────────────────────────────────
   const tbody = document.getElementById('xlBody');
   tbody.innerHTML = '';
 
@@ -551,7 +608,7 @@ function renderTable(rows) {
     // Text columns
     for (let c = 0; c < maxCols; c++) {
       const td  = document.createElement('td');
-      td.className = 'col-txt';
+      td.className = 'col-txt' + (c === 0 ? ' sep-left' : '');
       const div = document.createElement('div');
       div.className = 'cell-text';
       div.contentEditable = 'true';
@@ -582,29 +639,64 @@ async function exportExcel() {
 
     const ws = wb.addWorksheet('Ürün Tablosu');
 
-    // Column widths (ExcelJS char units ≈ 7px)
-    ws.getColumn(1).width = 32;  // Görsel ~225px
+    // Column widths
+    ws.getColumn(1).width = 32;
     for (let c = 1; c <= maxCols; c++) ws.getColumn(c + 1).width = 28;
 
-    // Header row
-    const hdr = ws.getRow(1);
-    hdr.height = 26;
-    hdr.getCell(1).value = 'Görsel';
-    for (let c = 1; c <= maxCols; c++) hdr.getCell(c + 1).value = `İçerik ${c}`;
-    hdr.eachCell(cell => {
-      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF217346' } };
-      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    // ── Satır 1: Grup başlıkları ──────────────────────────
+    const grpHdr = ws.getRow(1);
+    grpHdr.height = 22;
+
+    // "Görseller" — sadece Görsel sütununu kapsar (A1)
+    const gImgCell = grpHdr.getCell(1);
+    gImgCell.value     = '🖼  GÖRSELLER';
+    gImgCell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF185C37' } };
+    gImgCell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    gImgCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    gImgCell.border    = { right: { style: 'thick', color: { argb: 'FFFFFFFF' } }, bottom: { style: 'medium', color: { argb: 'FF0F3A22' } } };
+
+    // "İçerikler" — tüm içerik sütunlarını kapsar (B1:...)
+    if (maxCols > 0) {
+      const gTxtCell = grpHdr.getCell(2);
+      gTxtCell.value     = '📝  İÇERİKLER';
+      gTxtCell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+      gTxtCell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      gTxtCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      gTxtCell.border    = { bottom: { style: 'medium', color: { argb: 'FF0F204F' } } };
+      if (maxCols > 1) ws.mergeCells(1, 2, 1, maxCols + 1);
+    }
+
+    // ── Satır 2: Alt başlıklar ────────────────────────────
+    const subHdr = ws.getRow(2);
+    subHdr.height = 22;
+
+    const shImg = subHdr.getCell(1);
+    shImg.value     = 'Görsel';
+    shImg.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF217346' } };
+    shImg.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    shImg.alignment = { horizontal: 'center', vertical: 'middle' };
+    shImg.border    = { right: { style: 'thick', color: { argb: 'FF374151' } }, bottom: { style: 'medium', color: { argb: 'FF185C37' } } };
+
+    for (let c = 1; c <= maxCols; c++) {
+      const cell  = subHdr.getCell(c + 1);
+      cell.value     = `İçerik ${c}`;
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border    = { bottom: { style: 'medium', color: { argb: 'FF185C37' } } };
-    });
+      cell.border    = {
+        left:   c === 1 ? { style: 'thick',  color: { argb: 'FF374151' } } : { style: 'thin', color: { argb: 'FF4B5563' } },
+        bottom: { style: 'medium', color: { argb: 'FF1D4ED8' } }
+      };
+    }
 
-    const ROW_H_PT   = 100; // ~133px
-    const IMG_W_PX   = 210;
-    const IMG_H_PX   = 125;
+    const ROW_H_PT = 100;
+    const IMG_W_PX = 210;
+    const IMG_H_PX = 125;
 
+    // Data rows start at Excel row 3
     for (let ri = 0; ri < tableData.length; ri++) {
       const row   = tableData[ri];
-      const wsRow = ws.getRow(ri + 2);
+      const wsRow = ws.getRow(ri + 3);
       wsRow.height = ROW_H_PT;
 
       // Text cells
@@ -614,14 +706,14 @@ async function exportExcel() {
         cell.alignment = { wrapText: true, vertical: 'middle' };
         cell.font      = { size: 10 };
         cell.border    = {
-          top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          right:  { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          top:    { style: 'thin',  color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'thin',  color: { argb: 'FFD1D5DB' } },
+          left:   c === 0 ? { style: 'thick', color: { argb: 'FF374151' } } : { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right:  { style: 'thin',  color: { argb: 'FFD1D5DB' } }
         };
       }
 
-      // Embed image
+      // Embed image — tl.row = ri+2 çünkü 2 başlık satırı var (0-indexed)
       if (row.imgSrc) {
         try {
           const parts  = row.imgSrc.split(';base64,');
@@ -632,7 +724,7 @@ async function exportExcel() {
 
           const imgId = wb.addImage({ base64, extension: ext });
           ws.addImage(imgId, {
-            tl:     { col: 0, row: ri + 1 },
+            tl:     { col: 0, row: ri + 2 },
             ext:    { width: IMG_W_PX, height: IMG_H_PX },
             editAs: 'oneCell'
           });
@@ -698,9 +790,7 @@ function setProgress(pct, msg, sub) {
 }
 function resetApp() {
   tableData = [];
-  // Clear extra header columns
-  const hr = document.querySelector('#xlHead tr');
-  while (hr.children.length > 2) hr.removeChild(hr.lastChild);
+  document.getElementById('xlHead').innerHTML  = '';
   document.getElementById('xlBody').innerHTML  = '';
   document.getElementById('fileInput').value   = '';
   document.getElementById('folderInput').value = '';
