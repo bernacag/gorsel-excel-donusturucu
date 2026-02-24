@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 
   <style>
@@ -219,7 +219,7 @@
       <button class="btn btn-blue"  onclick="folderInput.click()">📁 Klasör Seç</button>
     </div>
     <div class="ocr-notice">
-      ⚡ İlk OCR işleminde dil paketi (~4 MB) indirilir — internet bağlantısı gerekir. Sonraki kullanımlarda anlık çalışır.
+      🤖 Görsellerdeki yazılar GPT-4o yapay zekası ile okunur — internet bağlantısı gerekir.
     </div>
     <input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip" style="display:none" onchange="handleFiles(this.files)" />
     <input type="file" id="folderInput" multiple webkitdirectory style="display:none" onchange="handleFiles(this.files)" />
@@ -280,22 +280,22 @@ const TEXT_EXTS  = ['txt'];
 
 let tableData   = [];   // [{index, label, imgSrc, textLines:[]}]
 let currentName = 'tablo';
-let tessWorker  = null;
 
-// ── Tesseract worker ──────────────────────────────────────────────────
-async function getTess() {
-  if (tessWorker) return tessWorker;
-  setProgress(3, 'OCR motoru yükleniyor…', 'İlk seferde dil paketi indiriliyor (~4 MB)');
-  tessWorker = await Tesseract.createWorker('tur+eng', 1, { logger: () => {} });
-  return tessWorker;
-}
-
+// ── GPT-4o Vision OCR ─────────────────────────────────────────────────
 async function ocrImg(imgSrc) {
-  const w = await getTess();
-  const { data } = await w.recognize(imgSrc);
-  return (data.lines || [])
-    .map(l => l.text.replace(/\r?\n/g, ' ').trim())
-    .filter(l => l.length > 1);
+  const res = await fetch('/api/ocr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imgSrc })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'OCR sunucu hatası: ' + res.status);
+  }
+
+  const { text } = await res.json();
+  return splitText(text || '');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
