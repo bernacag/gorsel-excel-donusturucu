@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-Bu dosya, Claude Code'un (claude.ai/code) bu depoda çalışırken başvuracağı rehberdir.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Proje Genel Bakış
 
-**Görsel & İçerik Excel Dönüştürücü** — derleme adımı olmayan, tek dosyadan oluşan bir tarayıcı uygulamasıdır. Görsel, PDF, DOCX ve ZIP dosyalarını kabul eder; görselleri ve metinleri (OCR veya yerel ayrıştırma yoluyla) çıkarır, düzenlenebilir bir tabloda gösterir ve gerçek gömülü görsellerle `.xlsx` dosyası olarak dışa aktarır.
+**Görsel & İçerik Excel Dönüştürücü** — derleme adımı olmayan bir tarayıcı uygulamasıdır. Görsel, PDF, DOCX ve ZIP dosyalarını kabul eder; görselleri ve metinleri çıkarır, düzenlenebilir bir tabloda gösterir ve gerçek gömülü görsellerle `.xlsx` dosyası olarak dışa aktarır.
+
+OCR işlemi istemci tarafında değil, **Cloudflare Pages Function** üzerinden GPT-4o Vision API'sine gönderilerek yapılır.
 
 ## Çalıştırma
 
@@ -13,45 +15,53 @@ Derleme adımı yoktur. `index.html` doğrudan tarayıcıda açılır:
 start index.html        # Windows
 open index.html         # macOS
 ```
-Tüm bağımlılıklar çalışma zamanında CDN'lerden yüklenir (`node_modules` veya `package.json` yoktur).
+Tüm ön yüz bağımlılıkları çalışma zamanında CDN'lerden yüklenir (`node_modules` veya `package.json` yoktur).
+
+OCR özelliğinin çalışması için uygulamanın Cloudflare Pages üzerinde dağıtılmış olması ve `OPENAI_API_KEY` ortam değişkeninin ayarlı olması gerekir. Dosyayı yerel olarak doğrudan açarsanız OCR çalışmaz (`.txt` eşlikçi dosyaları yine de çalışır).
 
 ## Mimari
 
-Uygulamanın tamamı `index.html` içinde, üç bölümden oluşan tek bir dosyada yer alır:
+Proje iki katmandan oluşur:
 
-1. **HTML** — `.hidden` sınıfıyla kontrol edilen, birbirini dışlayan üç UI paneli:
-   - `#uploadSection` — sürükle-bırak / dosya seçici giriş ekranı
-   - `#progressSection` — ilerleme çubuğu olan işlem göstergesi
-   - `#resultSection` — iki satırlı başlıklı tablo ve dışa aktarma butonu
+### 1. Ön Yüz (`index.html`)
 
-2. **CSS** — Tasarım değerleri CSS özel özellikleriyle (`--green`, `--border` vb.) tanımlanır. Herhangi bir framework kullanılmaz.
+Tek dosyadaki uygulama; HTML, CSS ve JavaScript'ten oluşur:
 
-3. **JavaScript** — tüm mantık tek bir `<script>` bloğunda yer alır:
-   - `tableData[]` — merkezi durum nesnesi: `{ index, label, imgSrc (data URL), textLines[] }`
-   - `currentName` — dışa aktarılan `.xlsx` dosyasının temel adı
-   - `tessWorker` — tembel başlatılan Tesseract.js çalışanı (Türkçe + İngilizce, ilk kullanımda ~4 MB indirilir)
+- **UI panelleri** — `.hidden` sınıfıyla geçiş yapılır: `#uploadSection`, `#progressSection`, `#resultSection`
+- **Merkezi durum** — `tableData[]`: `{ index, label, imgSrc (data URL), textLines[] }`
+- **`currentName`** — dışa aktarılan `.xlsx` dosyasının temel adı
 
-### Dosya türü yönlendirmesi (`route()` → işleyici)
+#### Dosya türü yönlendirmesi (`route()` → işleyici)
 
 | Girdi | İşleyici | Metin kaynağı |
 |---|---|---|
 | `.pdf` | `processPDF()` | `pdf.js` metin katmanı; sayfa canvas'a render edilir → JPEG data URL |
 | `.docx`/`.doc` | `processDOCX()` | `mammoth.js` HTML dönüşümü; görseller base64 olarak çıkarılır |
-| `.zip` | `processZIP()` | `JSZip`; görsellere OCR uygulanır; aynı isimli `.txt` dosyası varsa OCR atlanır |
-| Görsel / klasör | `processImages()` | `Tesseract.js` OCR; aynı isimli `.txt` dosyası varsa OCR atlanır |
+| `.zip` | `processZIP()` | `JSZip`; görsellere OCR uygulanır; aynı isimli `.txt` varsa OCR atlanır |
+| Görsel / klasör | `processImages()` | GPT-4o Vision OCR; aynı isimli `.txt` varsa OCR atlanır |
 
-### Eşlik eden `.txt` dosyası desteği
-Bir görsel ile aynı temel ada sahip `.txt` dosyası bulunursa (`foto.jpg` + `foto.txt`), metin dosyasının içeriği doğrudan kullanılır ve OCR atlanır.
+#### Eşlik eden `.txt` dosyası desteği
+Bir görsel ile aynı temel ada sahip `.txt` dosyası bulunursa (`foto.jpg` + `foto.txt`), `.txt` içeriği doğrudan kullanılır ve API çağrısı yapılmaz.
 
-### Excel dışa aktarma (`exportExcel()`)
-**ExcelJS** (jsDelivr'den tarayıcı derlemesi) kullanılır. `wb.addImage()` ve `ws.addImage()` ile gömülü görsellerden oluşan veri satırları ve iki satırlı başlık (grup satırı + alt başlık satırı) oluşturulur. Görseller iki başlık satırı nedeniyle `tl: { col:0, row: ri+2 }` ile konumlandırılır.
+#### Excel dışa aktarma (`exportExcel()`)
+**ExcelJS** kullanılır. İki satırlı başlık (grup satırı + alt başlık satırı) oluşturulur; görseller `tl: { col:0, row: ri+2 }` ile konumlandırılır.
 
-## CDN Bağımlılıkları
+### 2. Arka Uç (`functions/api/ocr.js`)
+
+**Cloudflare Pages Function** — `POST /api/ocr` isteğini karşılar.
+
+- İstemciden `{ imgSrc }` (data URL) alır
+- `env.OPENAI_API_KEY` ile OpenAI `gpt-4o` Vision API'sine iletir
+- Modele "görseldeki tüm metni satır satır, düz metin olarak yaz" talimatı verir
+- `{ text }` döndürür
+
+`_routes.json` dosyası, `/api/*` yollarını bu Function'a yönlendirir.
+
+## CDN Bağımlılıkları (Ön Yüz)
 
 | Kütüphane | Sürüm | Amaç |
 |---|---|---|
 | pdf.js | 3.11.174 | PDF render ve metin çıkarma |
 | mammoth.js | 1.6.0 | DOCX → HTML dönüşümü |
 | JSZip | 3.10.1 | ZIP dosyası açma |
-| Tesseract.js | 4.x | OCR (Türkçe + İngilizce) |
 | ExcelJS | 4.3.0 | Gömülü görsellerle `.xlsx` oluşturma |
